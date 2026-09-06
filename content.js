@@ -212,7 +212,11 @@
   // ============================================================================
 
   function lockElement(element) {
-    if (element.hasAttribute(SKELIO_ATTR)) {
+    if (!isActive || element.hasAttribute(SKELIO_ATTR) || element.hasAttribute(SKELIO_HYDRATED_ATTR)) {
+      return;
+    }
+    // Check if element is inside an already-hydrated card or container
+    if (element.closest && element.closest(`[${SKELIO_HYDRATED_ATTR}]`)) {
       return;
     }
 
@@ -221,7 +225,13 @@
     // Get original source (prefer cached originalSrc if re-locking after deactivation)
     let originalSrc = element.dataset.skelioOriginalSrc;
     if (!originalSrc || originalSrc.startsWith('data:')) {
-      originalSrc = element.src || element.currentSrc || element.data || element.poster;
+      originalSrc = element.src || element.getAttribute('src') || element.currentSrc || element.dataset.src || element.dataset.thumb || element.data || element.poster;
+    }
+    if (tag === 'IMG' && (!originalSrc || originalSrc.startsWith('data:'))) {
+      if (element.srcset) {
+        const first = element.srcset.split(',')[0].trim().split(' ')[0];
+        if (first && !first.startsWith('data:')) originalSrc = first;
+      }
     }
     if (tag === 'VIDEO' || tag === 'AUDIO') {
       if (!originalSrc || originalSrc.startsWith('blob:') || originalSrc.startsWith('data:')) {
@@ -235,9 +245,6 @@
     if (!originalSrc || (originalSrc.startsWith('data:') && !element.dataset.skelioOriginalSrc) || originalSrc.startsWith('blob:') || originalSrc.startsWith('about:')) {
       return;
     }
-
-    // Clear hydrated state if re-locking
-    element.removeAttribute(SKELIO_HYDRATED_ATTR);
 
     // Track original inline geometry before applying locks
     if (element.style.width) element.dataset.skelioHadInlineWidth = 'true';
@@ -267,7 +274,9 @@
     element.style.setProperty('opacity', '1', 'important');
     element.style.setProperty('filter', 'none', 'important');
     element.style.setProperty('mix-blend-mode', 'normal', 'important');
-    element.style.setProperty('z-index', '1', 'important');
+    element.style.setProperty('position', 'relative', 'important');
+    element.style.setProperty('z-index', '10', 'important');
+    element.style.setProperty('pointer-events', 'auto', 'important');
     element.style.setProperty('overflow', 'hidden', 'important');
     element.style.setProperty('cursor', 'pointer', 'important');
     element.style.setProperty('box-sizing', 'border-box', 'important');
@@ -295,7 +304,10 @@
         element.dataset.skelioPictureSrcsets = JSON.stringify(savedSrcsets);
       }
 
-      element.removeAttribute('srcset');
+      if (element.srcset) {
+        element.dataset.skelioOriginalSrcset = element.srcset;
+        element.removeAttribute('srcset');
+      }
       element.removeAttribute('loading');
       element.src = TRANSPARENT_PIXEL;
 
@@ -343,6 +355,7 @@
       if (!element.hasAttribute(SKELIO_ATTR)) return;
       e.preventDefault();
       e.stopPropagation();
+      e.stopImmediatePropagation();
       hydrateElement(element);
     }, { capture: true });
 
@@ -354,17 +367,25 @@
     console.log('[SkelIO] Locked:', tag, width + 'x' + height, originalSrc.substring(0, 60));
   }
 
-  function hydrateElement(element) {
+  async function hydrateElement(element) {
     const originalSrc = element.dataset.skelioOriginalSrc;
     if (!originalSrc) return;
 
     const tag = element.tagName;
 
+    // 1. Mark both the element AND its container as hydrated so dynamic re-renders never re-lock
     element.setAttribute(SKELIO_HYDRATED_ATTR, 'true');
     element.removeAttribute(SKELIO_ATTR);
+
+    const container = (element.closest && element.closest('ytd-thumbnail, yt-image, [id*="thumb"], [class*="thumb"], figure, picture, .card, a')) || element.parentElement;
+    if (container) {
+      container.setAttribute(SKELIO_HYDRATED_ATTR, 'true');
+    }
+
     element.style.cursor = 'default';
-    element.title = 'Loading...';
-    element.style.opacity = '0.5';
+    element.title = '';
+    element.style.setProperty('opacity', '1', 'important');
+    element.style.setProperty('visibility', 'visible', 'important');
 
     // Clear skeleton background
     element.style.removeProperty('background-image');
@@ -385,17 +406,28 @@
     }
     element.style.removeProperty('display');
     element.style.removeProperty('box-sizing');
-    element.style.removeProperty('visibility');
     element.style.removeProperty('filter');
     element.style.removeProperty('mix-blend-mode');
+    element.style.removeProperty('position');
     element.style.removeProperty('z-index');
+    element.style.removeProperty('pointer-events');
     element.style.removeProperty('overflow');
     if (!element.dataset.skelioHadInlineBorderRadius) {
       element.style.removeProperty('border-radius');
     }
 
-    // Tell background to allow this URL through DNR
-    sendToBackground({ action: 'HYDRATE_URL', url: originalSrc }).catch(() => {});
+    // Await DNR allow rule before setting src so network engine permits the load
+    try {
+      await sendToBackground({ action: 'HYDRATE_URL', url: originalSrc });
+    } catch (e) {}
+
+    // Support YouTube and custom web component image containers
+    const ytShadow = element.closest && element.closest('yt-img-shadow, yt-image, [id="thumbnail"]');
+    if (ytShadow) {
+      ytShadow.setAttribute('loaded', '');
+      const innerShadow = ytShadow.querySelector('yt-img-shadow');
+      if (innerShadow) innerShadow.setAttribute('loaded', '');
+    }
 
     if (tag === 'IMG') {
       // Restore <picture> <source> srcsets
@@ -410,13 +442,34 @@
         } catch (e) {}
       }
 
+      // Restore img's own srcset if it had one
+      if (element.dataset.skelioOriginalSrcset) {
+        element.srcset = element.dataset.skelioOriginalSrcset;
+      }
+
       element.onload = () => {
-        element.style.opacity = '1';
+        element.style.setProperty('opacity', '1', 'important');
         element.title = '';
       };
       element.onerror = () => {
-        element.style.opacity = '1';
+        element.style.setProperty('opacity', '1', 'important');
         element.title = 'Failed to load';
+        // Cache buster + blob fetch fallback in case browser cached the DNR block error
+        const sep = originalSrc.includes('?') ? '&' : '?';
+        const cacheBustSrc = originalSrc + sep + 'skelio_cb=' + Date.now();
+        fetch(cacheBustSrc)
+          .then(r => r.blob())
+          .then(blob => {
+            element.src = URL.createObjectURL(blob);
+          })
+          .catch(() => {
+            fetch(originalSrc)
+              .then(r => r.blob())
+              .then(blob => {
+                element.src = URL.createObjectURL(blob);
+              })
+              .catch(() => {});
+          });
       };
       element.src = originalSrc;
 
@@ -761,6 +814,78 @@
   }
 
   // ============================================================================
+  // GLOBAL CLICK-TO-LOAD CAPTURE
+  // Catches clicks anywhere on locked elements, parent wrappers, or overlay containers
+  // ============================================================================
+
+  window.addEventListener('click', function globalHydrateCapture(e) {
+    if (!isActive) return;
+
+    const target = e.target;
+    if (!target) return;
+
+    // 1. Target itself is locked
+    let lockedEl = (target.hasAttribute && target.hasAttribute(SKELIO_ATTR)) ? target : null;
+
+    // 2. Child of a locked element
+    if (!lockedEl && target.closest) {
+      lockedEl = target.closest(`[${SKELIO_ATTR}]`);
+    }
+
+    // 3. Any ancestor container up to 6 levels that contains a locked element
+    if (!lockedEl) {
+      let current = target;
+      for (let depth = 0; depth < 6 && current && current !== document.body && current !== document.documentElement; depth++) {
+        if (current.querySelector) {
+          const found = current.querySelector(`[${SKELIO_ATTR}]`);
+          if (found) {
+            lockedEl = found;
+            break;
+          }
+        }
+        current = current.parentElement;
+      }
+    }
+
+    // 4. Background image lock
+    let bgLockedEl = (target.hasAttribute && target.hasAttribute(SKELIO_BG_ATTR)) ? target : null;
+    if (!bgLockedEl && target.closest) {
+      bgLockedEl = target.closest(`[${SKELIO_BG_ATTR}]`);
+    }
+    if (!bgLockedEl) {
+      let current = target;
+      for (let depth = 0; depth < 6 && current && current !== document.body && current !== document.documentElement; depth++) {
+        if (current.querySelector) {
+          const found = current.querySelector(`[${SKELIO_BG_ATTR}]`);
+          if (found) {
+            bgLockedEl = found;
+            break;
+          }
+        }
+        current = current.parentElement;
+      }
+    }
+
+    if (lockedEl && lockedEl.hasAttribute(SKELIO_ATTR)) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      console.log('[SkelIO] Global capture click -> hydrating element:', lockedEl);
+      hydrateElement(lockedEl);
+      return;
+    }
+
+    if (bgLockedEl && bgLockedEl.hasAttribute(SKELIO_BG_ATTR)) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      console.log('[SkelIO] Global capture click -> hydrating bg:', bgLockedEl);
+      hydrateBackgroundImage(bgLockedEl);
+      return;
+    }
+  }, true);
+
+  // ============================================================================
   // LINK PRELOAD / PREFETCH REMOVAL
   // ============================================================================
 
@@ -790,9 +915,11 @@
           for (const node of mutation.addedNodes) {
             if (node.nodeType !== 1) continue;
 
-            // Lock media elements
+            // Lock media elements (ignore if element or parent container is hydrated)
             if (MEDIA_TARGETS.includes(node.tagName)) {
-              lockElement(node);
+              if (!node.hasAttribute(SKELIO_HYDRATED_ATTR) && !(node.closest && node.closest(`[${SKELIO_HYDRATED_ATTR}]`))) {
+                lockElement(node);
+              }
             }
 
             // Remove dynamically added preloads
@@ -814,14 +941,20 @@
             if (node.querySelectorAll) {
               const targets = node.querySelectorAll(MEDIA_TARGETS.join(','));
               for (let i = 0; i < targets.length && i < 50; i++) {
-                lockElement(targets[i]);
+                if (!targets[i].hasAttribute(SKELIO_HYDRATED_ATTR) && !(targets[i].closest && targets[i].closest(`[${SKELIO_HYDRATED_ATTR}]`))) {
+                  lockElement(targets[i]);
+                }
               }
             }
           }
         } else if (mutation.type === 'attributes') {
           const target = mutation.target;
           if (target.nodeType === 1 && MEDIA_TARGETS.includes(target.tagName)) {
-            if (target.hasAttribute(SKELIO_ATTR) && !target.hasAttribute(SKELIO_HYDRATED_ATTR)) {
+            // NEVER re-lock an element that was hydrated by user or is inside a hydrated container
+            if (target.hasAttribute(SKELIO_HYDRATED_ATTR) || (target.closest && target.closest(`[${SKELIO_HYDRATED_ATTR}]`))) {
+              return;
+            }
+            if (target.hasAttribute(SKELIO_ATTR)) {
               // Already locked — page JS overwrote src, reset to transparent pixel
               const currentSrc = target.src || '';
               if (target.tagName === 'IMG' && !currentSrc.startsWith('data:')) {
