@@ -19,23 +19,31 @@
   let layoutShiftsPrevented = 0;
   let blockedResourcesCount = 0;
 
-  // Pre-compile regex
-  const URL_PATTERN = /[?&]skelio(?:=1)?(?:&|$)/i;
+  // Transparent 1x1 pixel - used as dummy src so YouTube can't show broken image
+  const TRANSPARENT_PIXEL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+  // Pre-compile regex - matches ?skelio, /?skelio, &skelio, etc.
+  const URL_PATTERN = /[?&/]skelio(?:=1)?(?:&|$)/i;
 
   // ============================================================================
   // NETWORK DETECTION
   // ============================================================================
 
   function shouldActivateSkelIO() {
-    // TEMP: Force activation on Wikipedia for testing
-    if (window.location.hostname.includes('wikipedia.org')) {
-      console.log('[SkelIO] Activated on Wikipedia (testing mode)');
-      return true;
-    }
+    // Check URL parameters first (with fallback to href for redirect cases)
+    const hasParam = URL_PATTERN.test(window.location.search) || URL_PATTERN.test(window.location.href);
 
-    // Check URL parameters
-    if (URL_PATTERN.test(window.location.search)) {
-      console.log('[SkelIO] Activated via URL parameter');
+    if (hasParam) {
+      // Remove the skelio parameter from the URL so it doesn't appear in search results
+      const url = new URL(window.location.href);
+      url.searchParams.delete('skelio');
+      // Also remove if it's just ?skelio without value
+      if (url.searchParams.toString() === '') {
+        url.search = '';
+        history.replaceState({}, document.title, url.pathname + url.hash);
+      } else {
+        history.replaceState({}, document.title, url.pathname + '?' + url.search);
+      }
       return true;
     }
 
@@ -98,7 +106,43 @@
   // SVG SKELETON GENERATION
   // ============================================================================
 
-  function createSkeletonSVG(width, height) {
+  // Adaptive color detection: sample the page's background and compute contrasting text
+  function getAdaptiveColor(element) {
+    // Try to get computed background color from the element or its parent
+    let bgColor = '#1E1E1E'; // default dark
+    let textColor = '#FFFFFF'; // default white
+
+    // Check element's computed style
+    const computed = window.getComputedStyle(element);
+    const bg = computed.backgroundColor;
+    if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
+      // Simple heuristic: if bg looks light, use dark text, else light text
+      const rgb = parseColor(bg);
+      if (rgb) {
+        const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+        if (luminance > 0.5) {
+          textColor = '#000000';
+        } else {
+          textColor = '#FFFFFF';
+        }
+      }
+    }
+
+    // For images, try to detect website background by sampling a nearby element
+    // or use the stored adaptive color
+    return { bgColor: bgColor, textColor: textColor };
+  }
+
+  function parseColor(str) {
+    // Parse rgb(), rgba(), #hex, or named colors
+    const m = str.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+    if (m) return { r: parseInt(m[1]), g: parseInt(m[2]), b: parseInt(m[3]) };
+    const m2 = str.match(/^#([a-fA-F0-9]{2})([a-fA-F0-9]{2})([a-fA-F0-9]{2})$/);
+    if (m2) return { r: parseInt(m2[1], 16), g: parseInt(m2[2], 16), b: parseInt(m2[3], 16) };
+    return null;
+  }
+
+  function createSkeletonSVG(width, height, element) {
     // For very small images (icons), just show a solid box without text
     if (width < 50 || height < 50) {
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
@@ -108,28 +152,21 @@
       return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
     }
 
-    // For larger images, show full text
+    // Get adaptive text color based on detected background
+    const adaptive = getAdaptiveColor(element || document.body);
+
+    // For larger images, show full text with adaptive coloring
     const fontSize = Math.max(14, Math.min(width / 12, height / 6));
     const smallFontSize = Math.max(11, fontSize * 0.75);
 
+    // Rounded corners for a cleaner look
+    const radius = Math.min(width, height) * 0.1; // 10% of smaller dimension
+
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-      <defs>
-        <linearGradient id="shimmer-${width}-${height}" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" style="stop-color:#1E1E1E;stop-opacity:1">
-            <animate attributeName="offset" values="-2;1" dur="2s" repeatCount="indefinite"/>
-          </stop>
-          <stop offset="50%" style="stop-color:#3A3A3A;stop-opacity:1">
-            <animate attributeName="offset" values="-1.5;1.5" dur="2s" repeatCount="indefinite"/>
-          </stop>
-          <stop offset="100%" style="stop-color:#1E1E1E;stop-opacity:1">
-            <animate attributeName="offset" values="-1;2" dur="2s" repeatCount="indefinite"/>
-          </stop>
-        </linearGradient>
-      </defs>
-      <rect width="100%" height="100%" fill="url(#shimmer-${width}-${height})"/>
-      <rect width="100%" height="100%" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-opacity="0.2" stroke-dasharray="8,4"/>
-      <text x="50%" y="40%" text-anchor="middle" fill="#FFFFFF" fill-opacity="0.95" font-family="system-ui, Arial, sans-serif" font-size="${fontSize}" font-weight="700" letter-spacing="0.5">REMOVED BY SKELIO</text>
-      <text x="50%" y="60%" text-anchor="middle" fill="#FFFFFF" fill-opacity="0.7" font-family="system-ui, Arial, sans-serif" font-size="${smallFontSize}" font-weight="400">Click to load</text>
+      <rect width="100%" height="100%" fill="#1E1E1E" rx="${radius}" ry="${radius}"/>
+      <rect width="100%" height="100%" fill="none" stroke="${adaptive.textColor}" stroke-width="2" stroke-opacity="0.2" stroke-dasharray="8,4"/>
+      <text x="50%" y="40%" text-anchor="middle" fill="${adaptive.textColor}" fill-opacity="0.95" font-family="system-ui, Arial, sans-serif" font-size="${fontSize}" font-weight="700" letter-spacing="0.5" dominant-baseline="middle">REMOVED BY SKELIO</text>
+      <text x="50%" y="60%" text-anchor="middle" fill="${adaptive.textColor}" fill-opacity="0.7" font-family="system-ui, Arial, sans-serif" font-size="${smallFontSize}" font-weight="400" dominant-baseline="middle">Click to load</text>
     </svg>`;
 
     return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
@@ -149,8 +186,8 @@
 
     // Store original src
     const originalSrc = element.src || element.currentSrc || element.data || element.poster;
-    if (!originalSrc || originalSrc.startsWith('data:') || originalSrc.startsWith('blob:')) {
-      return; // Skip data URIs, blob URLs, and elements without src
+    if (!originalSrc || originalSrc.startsWith('data:') || originalSrc.startsWith('blob:') || originalSrc.startsWith('about:')) {
+      return; // Skip data URIs, blob URLs, internal frames, and elements without src
     }
 
     element.dataset.skelioOriginalSrc = originalSrc;
@@ -161,13 +198,14 @@
     element.style.minWidth = width + 'px';
     element.style.minHeight = height + 'px';
     element.style.display = 'inline-block';
+    element.style.visibility = 'visible';
     element.style.backgroundColor = '#1E1E1E';
     element.style.cursor = 'pointer';
     element.style.border = '2px solid #3A3A3A';
     element.style.boxSizing = 'border-box';
 
     // Generate skeleton
-    const skeletonSVG = createSkeletonSVG(width, height);
+    const skeletonSVG = createSkeletonSVG(width, height, element);
 
     // FORCE replace src immediately - don't let browser load original
     if (element.tagName === 'IMG') {
@@ -186,10 +224,12 @@
     element.setAttribute(SKELIO_ATTR, 'true');
     element.title = 'Click to load (SkelIO)';
 
-    // Add click handler
+    // Add click handler for hydration
     element.addEventListener('click', function hydrateHandler(e) {
       e.preventDefault();
       e.stopPropagation();
+      console.log('[SkelIO] Click detected on:', element.tagName, element.dataset.skelioOriginalSrc?.substring(0, 80));
+      console.log('[SkelIO] Element tag:', element.tagName, 'has hydrated attr:', element.hasAttribute(SKELIO_HYDRATED_ATTR));
       hydrateElement(element);
       element.removeEventListener('click', hydrateHandler);
     }, { once: true, capture: true });
@@ -203,13 +243,22 @@
 
   function hydrateElement(element) {
     const originalSrc = element.dataset.skelioOriginalSrc;
-    if (!originalSrc) return;
+    if (!originalSrc) {
+      console.warn('[SkelIO] Cannot hydrate - no original src stored. Checking attrs...');
+      console.warn('[SkelIO] SKELIO_ATTR:', element.hasAttribute(SKELIO_ATTR), 'SKELIO_HYDRATED_ATTR:', element.hasAttribute(SKELIO_HYDRATED_ATTR));
+      console.warn('[SkelIO] dataset keys:', Object.keys(element.dataset));
+      return;
+    }
+
+    console.log('[SkelIO] Hydrating element, restoring src:', originalSrc.substring(0, 100));
+    console.log('[SkelIO] Original src type:', typeof originalSrc);
 
     element.setAttribute(SKELIO_HYDRATED_ATTR, 'true');
     element.removeAttribute(SKELIO_ATTR);
-    element.style.cursor = '';
+    element.style.cursor = 'default';
     element.title = 'Loading...';
-    element.style.opacity = '0.5';
+    element.style.opacity = '0.6';
+    element.style.border = 'none'; // Remove skeleton border
 
     // Restore original src
     if (element.tagName === 'IMG') {
@@ -217,6 +266,14 @@
       img.onload = () => {
         img.style.opacity = '1';
         img.title = '';
+        img.style.backgroundColor = 'transparent';
+        console.log('[SkelIO] Image loaded successfully');
+      };
+      img.onerror = () => {
+        console.error('[SkelIO] Image failed to load:', originalSrc.substring(0, 80));
+        img.style.opacity = '1';
+        img.style.backgroundColor = '#FF0000';
+        img.title = 'Failed to load';
       };
       img.src = originalSrc;
     } else if (element.tagName === 'VIDEO') {
@@ -225,14 +282,16 @@
       element.load();
       element.style.opacity = '1';
       element.title = '';
+      element.style.backgroundColor = 'transparent';
     } else if (element.tagName === 'IFRAME') {
       element.src = originalSrc;
       element.srcdoc = '';
       element.style.opacity = '1';
       element.title = '';
+      element.style.backgroundColor = 'transparent';
     }
 
-    console.log('[SkelIO] Hydrated:', originalSrc);
+    console.log('[SkelIO] Hydration initiated for:', element.tagName);
 
     // Update stats (debounced)
     if (layoutShiftsPrevented % 5 === 0) {
@@ -264,16 +323,37 @@
               }
             }
           }
+        } else if (mutation.type === 'attributes') {
+          const target = mutation.target;
+          if (target.nodeType === 1 && TARGETS.includes(target.tagName)) {
+            // If already locked but page JS overwrote src, re-force the skeleton
+            if (target.hasAttribute(SKELIO_ATTR) && !target.hasAttribute(SKELIO_HYDRATED_ATTR)) {
+              const currentSrc = target.src || target.poster || '';
+              if (!currentSrc.startsWith('data:image/svg+xml')) {
+                const { width, height } = extractGeometry(target);
+                if (target.tagName === 'IMG') {
+                  target.removeAttribute('srcset');
+                  target.src = createSkeletonSVG(width, height, target);
+                } else if (target.tagName === 'VIDEO') {
+                  target.poster = createSkeletonSVG(width, height, target);
+                }
+              }
+            } else {
+              lockElement(target);
+            }
+          }
         }
       }
     });
 
     observer.observe(document.documentElement, {
       childList: true,
-      subtree: true
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['src', 'srcset', 'poster', 'data']
     });
 
-    console.log('[SkelIO] MutationObserver activated');
+    console.log('[SkelIO] MutationObserver activated (childList + attributes)');
   }
 
   function lockExistingElements() {
@@ -328,32 +408,22 @@
     console.log('[SkelIO] Activating...');
     isActive = true;
 
-    // Wait for <head> to exist, then inject CSS
-    function injectCSS() {
-      if (!document.head) {
-        requestAnimationFrame(injectCSS);
-        return;
-      }
-      const style = document.createElement('style');
-      style.id = 'skelio-hide-media';
-      style.textContent = `
-        img:not([${SKELIO_HYDRATED_ATTR}]) {
-          visibility: hidden !important;
-        }
-      `;
-      document.head.appendChild(style);
-      console.log('[SkelIO] CSS injected');
-    }
-    injectCSS();
+    // Notify background service worker (optional - DNR blocking)
+    sendToBackground({ action: 'ACTIVATE_SKELIO' }).then(res => {
+      console.log('[SkelIO] Background DNR activation:', res);
+    }).catch(err => {
+      console.warn('[SkelIO] Background DNR activation failed (DOM-only mode):', err.message);
+    });
 
-    // Lock existing elements
+    // Lock existing elements immediately
+    lockExistingElements();
+
+    // Also lock after DOM loads
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', lockExistingElements, { once: true });
-    } else {
-      lockExistingElements();
     }
 
-    // Setup observer
+    // Setup observer for new elements
     setupObserver();
 
     console.log('[SkelIO] Activated successfully');
