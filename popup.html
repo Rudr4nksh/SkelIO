@@ -1,118 +1,891 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SkelIO</title>
   <style>
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
     }
+
+    html {
+      margin: 0;
+      padding: 0;
+      background: #E2E8F0;
+    }
+
     body {
-      width: 300px;
-      min-height: 200px;
-      background: #1E1E1E;
-      color: #FFFFFF;
-      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 8px;
+      width: 376px;
+      background: #E2E8F0;
+      color: #0F172A;
+      user-select: none;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+
+    /* Adapt outer frame when browser is in dark mode (e.g. Opera GX default dark theme) */
+    @media (prefers-color-scheme: dark) {
+      html, body {
+        background: #0F172A;
+      }
+      .popup-card {
+        border-color: #334155 !important;
+        box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.45), 0 4px 12px -2px rgba(0, 0, 0, 0.25) !important;
+      }
+    }
+
+    /* ─── Floating Main Window Card with Rounded Corners ─── */
+    .popup-card {
+      background: #F8FAFC;
+      border: 1.5px solid #CBD5E1;
+      border-radius: 22px;
       padding: 16px;
+      box-shadow: 0 12px 30px -4px rgba(15, 23, 42, 0.14), 0 4px 10px -2px rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+      position: relative;
     }
-    h1 {
-      font-size: 18px;
-      margin-bottom: 16px;
-      font-weight: 600;
-    }
-    .btn-row {
+
+    /* ─── Top Header ─── */
+    .header {
       display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .brand-logo {
+      width: 28px;
+      height: 28px;
+      background: #0F172A;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.15);
+    }
+
+    .brand-logo svg {
+      width: 16px;
+      height: 16px;
+      fill: #FFFFFF;
+    }
+
+    .brand-title {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #0F172A;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .brand-title span {
+      font-size: 10px;
+      font-weight: 700;
+      color: #059669;
+      background: #ECFDF5;
+      padding: 2px 6px;
+      border-radius: 6px;
+      border: 1px solid #A7F3D0;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
       gap: 8px;
-      margin-bottom: 16px;
     }
-    .toggle-btn {
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: #ECFDF5;
+      border: 1px solid #A7F3D0;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #059669;
+      letter-spacing: 0.02em;
+      transition: all 0.2s ease;
+    }
+
+    .status-badge.off {
+      background: #E2E8F0;
+      border-color: #CBD5E1;
+      color: #64748B;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #10B981;
+      box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+      animation: pulseDot 2s infinite ease-in-out;
+    }
+
+    .status-badge.off .status-dot {
+      background: #94A3B8;
+      box-shadow: none;
+      animation: none;
+    }
+
+    @keyframes pulseDot {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.3); opacity: 0.7; }
+    }
+
+    .icon-btn {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 9px;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #64748B;
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      transition: all 0.2s;
+    }
+
+    .icon-btn:hover {
+      background: #F1F5F9;
+      color: #0F172A;
+      border-color: #CBD5E1;
+    }
+
+    /* ─── Hero Site Control Card ─── */
+    .hero-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 16px;
+      padding: 13px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.02);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .site-info {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      margin-bottom: 12px;
+    }
+
+    .site-avatar-wrap {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: #F1F5F9;
+      border: 1px solid #E2E8F0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .site-avatar-wrap img {
+      width: 20px;
+      height: 20px;
+      object-fit: contain;
+    }
+
+    .site-meta {
       flex: 1;
+      min-width: 0;
+    }
+
+    .site-name {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #0F172A;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .site-status {
+      font-size: 11px;
+      color: #64748B;
+      margin-top: 2px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .site-status .shield-icon {
+      width: 12px;
+      height: 12px;
+      fill: #10B981;
+    }
+
+    /* Master Toggle Button */
+    .master-btn {
+      width: 100%;
       padding: 10px;
+      background: #0F172A;
+      color: #FFFFFF;
       border: none;
-      border-radius: 6px;
+      border-radius: 12px;
       font-size: 13px;
       font-weight: 600;
+      letter-spacing: 0.01em;
       cursor: pointer;
-      transition: background 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 3px 10px rgba(15, 23, 42, 0.15);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    .toggle-btn.off {
-      background: #4CAF50;
-      color: #FFFFFF;
+
+    .master-btn:hover {
+      background: #1E293B;
+      transform: translateY(-1px);
+      box-shadow: 0 5px 14px rgba(15, 23, 42, 0.2);
     }
-    .toggle-btn.off:hover {
-      background: #45A049;
+
+    .master-btn:active {
+      transform: translateY(0);
     }
-    .toggle-btn.on {
-      background: #F44336;
-      color: #FFFFFF;
+
+    .master-btn.off {
+      background: #F1F5F9;
+      color: #64748B;
+      box-shadow: none;
+      border: 1px solid #E2E8F0;
     }
-    .toggle-btn.on:hover {
-      background: #D32F2F;
+
+    .master-btn.off:hover {
+      background: #E2E8F0;
+      color: #0F172A;
     }
-    .font-btn {
-      padding: 10px;
-      border: none;
-      border-radius: 6px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      background: #2196F3;
-      color: #FFFFFF;
-      transition: background 0.2s;
+
+    /* ─── Speed Auto-Toggle Card ─── */
+    .speed-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 14px;
+      padding: 11px 12px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
     }
-    .font-btn:hover {
-      background: #1976D2;
+
+    .speed-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 9px;
     }
-    .font-btn:disabled {
-      background: #555;
-      cursor: default;
+
+    .speed-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
-    .stats {
+
+    .speed-icon-box {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      background: #FEF3C7;
+      border: 1px solid #FDE68A;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #D97706;
+      flex-shrink: 0;
+    }
+
+    .speed-icon-box svg {
+      width: 14px;
+      height: 14px;
+      fill: currentColor;
+    }
+
+    .speed-meta {
       display: flex;
       flex-direction: column;
-      gap: 12px;
     }
-    .stat-item {
+
+    .speed-title {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #0F172A;
+      letter-spacing: -0.01em;
+    }
+
+    .speed-subtitle {
+      font-size: 10px;
+      color: #64748B;
+      margin-top: 1px;
+    }
+
+    .speed-subtitle strong {
+      color: #0F172A;
+      font-weight: 600;
+    }
+
+    .current-speed-pill {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      background: #F1F5F9;
+      border: 1px solid #CBD5E1;
+      border-radius: 100px;
+      font-size: 10.5px;
+      font-weight: 700;
+      color: #334155;
+      font-variant-numeric: tabular-nums;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .current-speed-pill:hover {
+      background: #E2E8F0;
+      color: #0F172A;
+      border-color: #94A3B8;
+    }
+
+    .current-speed-pill svg {
+      width: 10px;
+      height: 10px;
+      fill: currentColor;
+      color: #64748B;
+      transition: transform 0.3s;
+    }
+
+    .current-speed-pill.testing svg {
+      animation: spin 0.8s infinite linear;
+      color: #0284C7;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .speed-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #10B981;
+      box-shadow: 0 0 5px rgba(16, 185, 129, 0.6);
+    }
+
+    .speed-slider-wrap {
+      margin: 8px 0 10px 0;
+    }
+
+    .speed-slider {
+      width: 100%;
+      height: 5px;
+      border-radius: 5px;
+      background: #E2E8F0;
+      outline: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+    }
+
+    .speed-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: #0F172A;
+      border: 2px solid #FFFFFF;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+      cursor: pointer;
+      transition: transform 0.15s, background-color 0.15s;
+    }
+
+    .speed-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+      background: #1E293B;
+    }
+
+    .speed-slider-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9px;
+      color: #94A3B8;
+      font-weight: 600;
+      margin-top: 3px;
+    }
+
+    .speed-presets {
+      display: flex;
+      gap: 6px;
+    }
+
+    .speed-chip {
+      flex: 1;
+      padding: 5px 0;
+      border-radius: 9px;
+      border: 1px solid #E2E8F0;
+      background: #F8FAFC;
+      color: #475569;
+      font-size: 10.5px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .speed-chip:hover {
+      background: #F1F5F9;
+      color: #0F172A;
+      border-color: #CBD5E1;
+    }
+
+    .speed-chip.active {
+      background: #0F172A;
+      color: #FFFFFF;
+      border-color: #0F172A;
+      box-shadow: 0 2px 7px rgba(15, 23, 42, 0.18);
+    }
+
+    /* ─── Feature Tiles ─── */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .feature-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 14px;
+      padding: 11px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 9px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .feature-card:hover {
+      border-color: #CBD5E1;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    .feature-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .feature-icon-box {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .feature-icon-box.font-icon {
+      background: #F0F9FF;
+      color: #0284C7;
+      border: 1px solid #BAE6FD;
+    }
+
+    .feature-icon-box.threed-icon {
+      background: #F5F3FF;
+      color: #7C3AED;
+      border: 1px solid #DDD6FE;
+    }
+
+    .feature-label {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #1E293B;
+    }
+
+    .feature-btn {
+      width: 100%;
+      padding: 6px 8px;
+      border-radius: 9px;
+      border: 1px solid #E2E8F0;
+      background: #F8FAFC;
+      color: #475569;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+
+    .feature-btn:hover {
+      background: #F1F5F9;
+      color: #0F172A;
+    }
+
+    .feature-btn.active {
+      background: #E0F2FE;
+      border-color: #7DD3FC;
+      color: #0369A1;
+    }
+
+    .feature-btn.purple-active {
+      background: #EDE9FE;
+      border-color: #C4B5FD;
+      color: #6D28D9;
+    }
+
+    /* ─── Live Metrics Section ─── */
+    .metrics-container {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 14px;
+      padding: 11px 12px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    }
+
+    .metrics-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 8px;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 6px;
+      margin-bottom: 8px;
     }
-    .stat-label {
-      font-size: 12px;
-      opacity: 0.7;
+
+    .metrics-title {
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #64748B;
     }
-    .stat-value {
-      font-size: 16px;
+
+    .metrics-live {
+      font-size: 10px;
+      font-weight: 700;
+      color: #059669;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .metrics-live::before {
+      content: '';
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #10B981;
+    }
+
+    .metric-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 0;
+      border-bottom: 1px solid #F1F5F9;
+    }
+
+    .metric-row:last-child {
+      border-bottom: none;
+      padding-bottom: 1px;
+    }
+
+    .metric-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .metric-icon-wrap {
+      width: 22px;
+      height: 22px;
+      border-radius: 7px;
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .metric-icon-wrap svg {
+      width: 12px;
+      height: 12px;
+      fill: #64748B;
+    }
+
+    .metric-label {
+      font-size: 11.5px;
+      color: #475569;
+      font-weight: 500;
+    }
+
+    .metric-val {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #0F172A;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .metric-val.green {
+      color: #059669;
+    }
+
+    .metric-val.cyan {
+      color: #0284C7;
+    }
+
+    /* ─── Footer Action ─── */
+    .footer-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .action-secondary-btn {
+      flex: 1;
+      padding: 7px 8px;
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 10px;
+      color: #475569;
+      font-size: 11px;
       font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+      transition: all 0.2s;
+    }
+
+    .action-secondary-btn:hover {
+      background: #F8FAFC;
+      color: #0F172A;
+      border-color: #CBD5E1;
+    }
+
+    .action-secondary-btn svg {
+      width: 12px;
+      height: 12px;
+      fill: currentColor;
     }
   </style>
 </head>
 <body>
-  <h1>SkelIO</h1>
-  <div class="btn-row">
-    <button class="toggle-btn off" id="toggleBtn">Enable on this page</button>
-    <button class="font-btn" id="fontBtn" disabled>Load Fonts</button>
-  </div>
-  <button class="font-btn" id="threeDBtn" style="width: 100%; margin-bottom: 16px; background: #9C27B0;" disabled>Freeze Animations & 3D</button>
-  <div class="stats">
-    <div class="stat-item">
-      <span class="stat-label">Layout Shifts Prevented</span>
-      <span class="stat-value" id="layoutShifts">0</span>
+
+  <!-- Floating Main Window Card with Rounded Corners -->
+  <div class="popup-card">
+
+    <!-- Top Header -->
+    <div class="header">
+      <div class="brand">
+        <div class="brand-logo">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5zm0 4a3 3 0 110 6 3 3 0 010-6zm4.5 12.3c-1.3-.8-2.9-1.3-4.5-1.3s-3.2.5-4.5 1.3C6.6 17.1 6 15.6 6 14c0-3.3 2.7-6 6-6s6 2.7 6 6c0 1.6-.6 3.1-1.5 4.3z"/>
+          </svg>
+        </div>
+        <div class="brand-title">
+          skelio <span>PRO</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="status-badge" id="statusBadge">
+          <div class="status-dot"></div>
+          <span id="statusBadgeText">ACTIVE</span>
+        </div>
+        <button class="icon-btn" id="reloadTabBtn" title="Hard Refresh Tab (Ctrl+Shift+R)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+          </svg>
+        </button>
+      </div>
     </div>
-    <div class="stat-item">
-      <span class="stat-label">Bandwidth Saved</span>
-      <span class="stat-value" id="bandwidth">0 KB</span>
+
+    <!-- Hero Site Control Card -->
+    <div class="hero-card">
+      <div class="site-info">
+        <div class="site-avatar-wrap">
+          <img id="siteFavicon" src="icons/icon32.png" alt="Site icon" onerror="this.src='icons/icon32.png'">
+        </div>
+        <div class="site-meta">
+          <div class="site-name" id="siteDomain">Current Page</div>
+          <div class="site-status">
+            <svg class="shield-icon" viewBox="0 0 24 24">
+              <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
+            </svg>
+            <span id="siteProtectionText">CLS Shield & Skeleton Lock</span>
+          </div>
+        </div>
+      </div>
+      <button class="master-btn" id="toggleBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h-2v-6h2v6zm4 0h-2v-6h2v6z"/>
+        </svg>
+        <span id="toggleBtnText">SkelIO Active ✓</span>
+      </button>
     </div>
-    <div class="stat-item">
-      <span class="stat-label">Resources Blocked</span>
-      <span class="stat-value" id="blocked">0</span>
+
+    <!-- Speed Auto-Toggle Threshold Card -->
+    <div class="speed-card">
+      <div class="speed-header">
+        <div class="speed-title-wrap">
+          <div class="speed-icon-box">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 3C6.48 3 2 7.48 2 13c0 3.7 2.01 6.92 5 8.66.4.23.9-.06.9-.53v-.78c0-.33-.18-.63-.47-.8A8.006 8.006 0 014 13c0-4.41 3.59-8 8-8s8 3.59 8 8c0 2.45-1.11 4.64-2.87 6.11-.27.23-.43.57-.43.93v.54c0 .47.5.76.9.53 3-1.74 5-4.96 5-8.66 0-5.52-4.48-10-10-10zm-1 5v5.59l3.71 3.71 1.41-1.41-3.12-3.12V8h-2z"/>
+            </svg>
+          </div>
+          <div class="speed-meta">
+            <div class="speed-title">Auto-Toggle Speed Limit</div>
+            <div class="speed-subtitle" id="speedSubtitle">Engage when &le; <strong id="speedDisplayVal">50 Mbps</strong></div>
+          </div>
+        </div>
+        <button class="current-speed-pill" id="testSpeedBtn" title="Click to benchmark actual speed">
+          <span class="speed-dot" id="speedDot"></span>
+          <span id="currentSpeedText">Measuring...</span>
+          <svg class="refresh-icon" viewBox="0 0 24 24">
+            <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Interactive Speed Range Slider -->
+      <div class="speed-slider-wrap">
+        <input type="range" id="speedRangeSlider" min="2" max="100" step="2" value="50" class="speed-slider" title="Drag to adjust threshold" />
+        <div class="speed-slider-labels">
+          <span>2 Mbps</span>
+          <span id="sliderMidVal">50 Mbps</span>
+          <span>100 Mbps</span>
+        </div>
+      </div>
+
+      <!-- Preset Speed Buttons -->
+      <div class="speed-presets" id="speedPresets">
+        <button class="speed-chip" data-speed="5" title="Slow (&le; 5 Mbps)">&le; 5M</button>
+        <button class="speed-chip" data-speed="15" title="Moderate (&le; 15 Mbps)">&le; 15M</button>
+        <button class="speed-chip" data-speed="30" title="Standard (&le; 30 Mbps)">&le; 30M</button>
+        <button class="speed-chip active" data-speed="50" title="Fast (&le; 50 Mbps)">&le; 50M</button>
+        <button class="speed-chip" data-speed="always" title="Always active on all speeds">Always</button>
+      </div>
     </div>
-  </div>
+
+    <!-- Feature Controls Grid -->
+    <div class="feature-grid">
+      <!-- Light Typography Card -->
+      <div class="feature-card">
+        <div class="feature-top">
+          <div class="feature-icon-box font-icon">Aa</div>
+          <div class="feature-label">Light Font</div>
+        </div>
+        <button class="feature-btn active" id="fontBtn">
+          <span id="fontBtnText">Light (300)</span>
+        </button>
+      </div>
+
+      <!-- 3D & Motion Card -->
+      <div class="feature-card">
+        <div class="feature-top">
+          <div class="feature-icon-box threed-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M21 16.5l-9 5.25-9-5.25V7.5l9-5.25 9 5.25v9zM12 4.15L5.04 8.2 12 12.26l6.96-4.06L12 4.15zM4.5 9.87v6.26l6.75 3.94v-6.26L4.5 9.87zm15 0l-6.75 3.94v6.26l6.75-3.94V9.87z"/>
+            </svg>
+          </div>
+          <div class="feature-label">3D & Motion</div>
+        </div>
+        <button class="feature-btn purple-active" id="threeDBtn">
+          <span id="threeDBtnText">Frozen Still</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Live Metrics Dashboard -->
+    <div class="metrics-container">
+      <div class="metrics-header">
+        <div class="metrics-title">Live Performance Impact</div>
+        <div class="metrics-live">ACTIVE</div>
+      </div>
+
+      <div class="metric-row">
+        <div class="metric-left">
+          <div class="metric-icon-wrap">
+            <svg viewBox="0 0 24 24">
+              <path d="M4 6h16V4H4c-1.1 0-2 .9-2 2v11H0v3h14v-3H4V6zm19 2h-6c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h6c.55 0 1-.45 1-1V9c0-.55-.45-1-1-1zm-1 9h-4v-7h4v7z"/>
+            </svg>
+          </div>
+          <span class="metric-label">Layout Shifts Prevented</span>
+        </div>
+        <span class="metric-val green" id="layoutShifts">0</span>
+      </div>
+
+      <div class="metric-row">
+        <div class="metric-left">
+          <div class="metric-icon-wrap">
+            <svg viewBox="0 0 24 24">
+              <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
+            </svg>
+          </div>
+          <span class="metric-label">Bandwidth Saved</span>
+        </div>
+        <span class="metric-val cyan" id="bandwidth">0 KB</span>
+      </div>
+
+      <div class="metric-row">
+        <div class="metric-left">
+          <div class="metric-icon-wrap">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+            </svg>
+          </div>
+          <span class="metric-label">Resources Locked</span>
+        </div>
+        <span class="metric-val" id="blocked">0</span>
+      </div>
+    </div>
+
+    <!-- Footer Quick Actions -->
+    <div class="footer-actions">
+      <button class="action-secondary-btn" id="hydrateAllBtn" title="Unlock all images & media on this page">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0020 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 004 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+        </svg>
+        Load All Media
+      </button>
+      <button class="action-secondary-btn" id="shortcutHintBtn" title="Keyboard Shortcut">
+        <svg viewBox="0 0 24 24">
+          <path d="M20 5H4c-1.1 0-1.99.9-1.99 2L2 17c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-9 3h2v2h-2V8zm0 3h2v2h-2v-2zM8 8h2v2H8V8zm0 3h2v2H8v-2zm-1 4H5v-2h2v2zm0-3H5v-2h2v2zm0-3H5V6h2v2zm9 7H8v-2h8v2zm0-4h-2v-2h2v2zm0-3h-2V8h2v2zm3 7h-2v-2h2v2zm0-3h-2v-2h2v2zm0-3h-2V8h2v2z"/>
+        </svg>
+        Ctrl+Shift+R
+      </button>
+    </div>
+
+  </div> <!-- /popup-card -->
+
   <script src="popup.js"></script>
 </body>
 </html>

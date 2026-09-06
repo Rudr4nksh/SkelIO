@@ -12,6 +12,41 @@ const RULE_ID_INCREMENT = 10000;
 const activeTabs = new Map(); // tabId -> { blockRuleId, allowRuleIds: Set, allowRuleCounter: number }
 
 /**
+ * Real-time network speed measurement
+ * Fetches a micro-payload from CDN and calculates real throughput in Mbps
+ */
+async function measureRealSpeedMbps() {
+  const testUrl = `https://speed.cloudflare.com/__down?bytes=150000&_=${Date.now()}`;
+  try {
+    const start = performance.now();
+    const response = await fetch(testUrl, { cache: 'no-store' });
+    const blob = await response.blob();
+    const durationSec = (performance.now() - start) / 1000;
+    if (durationSec > 0.01 && blob.size > 0) {
+      const speedMbps = (blob.size * 8) / (durationSec * 1000000);
+      const rounded = Math.max(0.1, Math.round(speedMbps * 10) / 10);
+      await chrome.storage.local.set({ lastKnownSpeed: rounded });
+      console.log('[SkelIO] Real speed measured:', rounded, 'Mbps');
+      return rounded;
+    }
+  } catch (e) {
+    console.warn('[SkelIO] Speed test error, trying fallback:', e);
+    try {
+      const fallbackUrl = `https://upload.wikimedia.org/wikipedia/commons/c/ca/1x1.png?_=${Date.now()}`;
+      const start = performance.now();
+      await fetch(fallbackUrl, { cache: 'no-store' });
+      const durationSec = (performance.now() - start) / 1000;
+      const estimated = durationSec > 0.5 ? 5.0 : (durationSec > 0.2 ? 15.0 : 40.0);
+      await chrome.storage.local.set({ lastKnownSpeed: estimated });
+      return estimated;
+    } catch (err) {}
+  }
+  const fallback = 25.0;
+  await chrome.storage.local.set({ lastKnownSpeed: fallback });
+  return fallback;
+}
+
+/**
  * Initialize stats storage on install
  */
 chrome.runtime.onInstalled.addListener(() => {
@@ -20,9 +55,15 @@ chrome.runtime.onInstalled.addListener(() => {
     totalBandwidthSaved: 0,
     sessionsActivated: 0,
     layoutShiftsPrevented: 0,
-    skelioEnabled: true
+    skelioEnabled: true,
+    maxSpeedThreshold: 50
   });
-  console.log('[SkelIO] Extension installed, stats and enabled initialized');
+  measureRealSpeedMbps().catch(() => {});
+  console.log('[SkelIO] Extension installed, stats, enabled, and speed threshold initialized');
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  measureRealSpeedMbps().catch(() => {});
 });
 
 /**
@@ -41,8 +82,8 @@ function generateAllowRuleId(tabId, counter) {
  */
 async function activateSkelIO(tabId) {
   if (activeTabs.has(tabId)) {
-    console.log(`[SkelIO] Already active on tab ${tabId}`);
-    return { success: true, alreadyActive: true };
+    console.log(`[SkelIO] Refreshing active state on tab ${tabId}`);
+    await deactivateSkelIO(tabId);
   }
 
   const blockRuleId = generateBlockRuleId(tabId);
@@ -277,13 +318,19 @@ async function getStats() {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const tabId = sender.tab?.id || message.tabId;
 
-  if (!tabId && message.action !== 'GET_STATS') {
+  if (!tabId && message.action !== 'GET_STATS' && message.action !== 'TEST_SPEED') {
     console.error('[SkelIO] No tabId in message:', message);
     sendResponse({ success: false, error: 'No tabId provided' });
     return false;
   }
 
   switch (message.action) {
+    case 'TEST_SPEED':
+      measureRealSpeedMbps().then(speed => {
+        sendResponse({ success: true, speed });
+      });
+      return true;
+
     case 'ACTIVATE_SKELIO':
       activateSkelIO(tabId).then(sendResponse);
       return true; // Keep channel open for async
@@ -338,17 +385,23 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 });
 
 /**
- * Auto-activate on all websites when enabled
+ * Check whether auto-activation should occur based on enable state & speed threshold
  */
-async function isSkelioEnabled() {
-  const data = await chrome.storage.local.get(['skelioEnabled']);
-  return data.skelioEnabled !== false; // Default to true on all websites
+async function shouldAutoActivateTab() {
+  const data = await chrome.storage.local.get(['skelioEnabled', 'maxSpeedThreshold', 'lastKnownSpeed']);
+  if (data.skelioEnabled === false) return false;
+  const threshold = data.maxSpeedThreshold !== undefined ? data.maxSpeedThreshold : 50;
+  if (threshold === 'always' || threshold === 0 || threshold === '0') return true;
+  if (data.lastKnownSpeed !== undefined && data.lastKnownSpeed !== null) {
+    return data.lastKnownSpeed <= threshold;
+  }
+  return true; // Default to active if speed not yet detected
 }
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (!tab.url || (!tab.url.startsWith('http://') && !tab.url.startsWith('https://'))) return;
-  const enabled = await isSkelioEnabled();
-  if (enabled && !activeTabs.has(tabId)) {
+  const shouldActivate = await shouldAutoActivateTab();
+  if (shouldActivate && !activeTabs.has(tabId)) {
     console.log('[SkelIO] Auto-activating for tab', tabId, tab.url.substring(0, 50));
     activateSkelIO(tabId);
   }
@@ -356,8 +409,8 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
 chrome.tabs.onCreated.addListener(async (tab) => {
   if (!tab.url || (!tab.url.startsWith('http://') && !tab.url.startsWith('https://'))) return;
-  const enabled = await isSkelioEnabled();
-  if (enabled && !activeTabs.has(tab.id)) {
+  const shouldActivate = await shouldAutoActivateTab();
+  if (shouldActivate && !activeTabs.has(tab.id)) {
     console.log('[SkelIO] Auto-activating for new tab', tab.id);
     activateSkelIO(tab.id);
   }
