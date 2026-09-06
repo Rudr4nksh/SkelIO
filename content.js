@@ -222,6 +222,37 @@
 
     const tag = element.tagName;
 
+    // Filter out UI icons, logos, wordmarks, and small badges so website navigation and branding are never broken
+    if (tag === 'IMG') {
+      const isIconOrLogo = (element.className + ' ' + (element.id || '') + ' ' + (element.parentElement?.className || '')).toLowerCase().match(/icon|logo|brand|avatar|badge|emoji|flag|arrow|caret|btn|nav|status|spinner|symbol|wordmark/);
+      const rect = element.getBoundingClientRect();
+      const w = rect.width || parseInt(element.width, 10) || parseInt(element.style.width, 10) || 0;
+      const h = rect.height || parseInt(element.height, 10) || parseInt(element.style.height, 10) || 0;
+
+      // Small icons (42px or less)
+      if (w > 0 && w <= 42 && h > 0 && h <= 42) {
+        return;
+      }
+      // Header, navigation, and toolbar logos/buttons
+      const inNavOrHeader = element.closest && element.closest('header, nav, [role="navigation"], [class*="nav"], [class*="header"], [class*="toolbar"]');
+      if (inNavOrHeader && w <= 240 && h <= 85) {
+        return;
+      }
+      // General logo/brand/wordmark classes
+      if (isIconOrLogo && w <= 220 && h <= 80) {
+        return;
+      }
+      // Action button textures and frames (e.g. hero-cta btn-box)
+      if (element.closest && element.closest('a[class*="cta"], a[class*="btn"], button[class*="btn"], [class*="cta"] img, [class*="btn"] img')) {
+        return;
+      }
+      // SVGs (almost always vector icons or logos)
+      const src = (element.getAttribute('src') || element.src || '').toLowerCase();
+      if (src.endsWith('.svg') || src.includes('.svg?') || src.startsWith('data:image/svg')) {
+        return;
+      }
+    }
+
     // Get original source (prefer cached originalSrc if re-locking after deactivation)
     let originalSrc = element.dataset.skelioOriginalSrc;
     if (!originalSrc || originalSrc.startsWith('data:')) {
@@ -263,31 +294,59 @@
 
     const skeletonSVG = createSkeletonSVG(width, height, label);
 
-    // Lock geometry with !important to resist page CSS overrides
+    const compStyle = window.getComputedStyle(element);
+    const isNaturallyPointerEventsNone = compStyle.pointerEvents === 'none';
+    const isInitiallyHidden = compStyle.visibility === 'hidden' || compStyle.opacity === '0';
+
+    // Lock geometry with !important without breaking flex/grid layouts or stacking order
     element.style.setProperty('width', width + 'px', 'important');
     element.style.setProperty('height', height + 'px', 'important');
-    element.style.setProperty('min-width', width + 'px', 'important');
-    element.style.setProperty('min-height', height + 'px', 'important');
-    element.style.setProperty('max-width', '100%', 'important');
-    element.style.setProperty('display', 'inline-block', 'important');
-    element.style.setProperty('visibility', 'visible', 'important');
-    element.style.setProperty('opacity', '1', 'important');
+
+    const parentWidth = element.parentElement ? element.parentElement.clientWidth : window.innerWidth;
+    if (width <= parentWidth) {
+      element.style.setProperty('max-width', '100%', 'important');
+    }
+    if (compStyle.aspectRatio && compStyle.aspectRatio !== 'auto') {
+      element.style.setProperty('aspect-ratio', compStyle.aspectRatio, 'important');
+    }
+
+    try {
+      if (compStyle.display === 'inline') {
+        element.style.setProperty('display', 'inline-block', 'important');
+      }
+      // Only set relative if element was statically positioned, never break absolute/fixed/sticky positioning
+      if (compStyle.position === 'static') {
+        element.style.setProperty('position', 'relative', 'important');
+      }
+    } catch (e) {
+      element.style.setProperty('display', 'inline-block', 'important');
+    }
+
+    // Only set visibility/opacity if the element wasn't deliberately hidden by page timeline / scroll trigger
+    if (!isInitiallyHidden) {
+      element.style.setProperty('visibility', 'visible', 'important');
+      element.style.setProperty('opacity', '1', 'important');
+    }
+
     element.style.setProperty('filter', 'none', 'important');
     element.style.setProperty('mix-blend-mode', 'normal', 'important');
-    element.style.setProperty('position', 'relative', 'important');
-    element.style.setProperty('z-index', '10', 'important');
-    element.style.setProperty('pointer-events', 'auto', 'important');
     element.style.setProperty('overflow', 'hidden', 'important');
-    element.style.setProperty('cursor', 'pointer', 'important');
     element.style.setProperty('box-sizing', 'border-box', 'important');
-    element.style.setProperty('border-radius', '10px', 'important');
+
+    // If element is a decorative layer with pointer-events: none (e.g. hero-tree), NEVER intercept clicks!
+    if (isNaturallyPointerEventsNone) {
+      element.style.setProperty('pointer-events', 'none', 'important');
+    } else {
+      element.style.setProperty('pointer-events', 'auto', 'important');
+      element.style.setProperty('cursor', 'pointer', 'important');
+      element.style.setProperty('border-radius', '10px', 'important');
+    }
 
     // Skeleton via CSS background-image (page JS can't overwrite this)
     element.style.setProperty('background-image', `url("${skeletonSVG}")`, 'important');
     element.style.setProperty('background-size', '100% 100%', 'important');
     element.style.setProperty('background-position', 'center center', 'important');
     element.style.setProperty('background-repeat', 'no-repeat', 'important');
-    element.style.setProperty('background-color', '#0F172A', 'important');
 
     // Tag-specific source replacement
     if (tag === 'IMG') {
@@ -545,61 +604,71 @@
     // Always append as the last child to take precedence over all existing stylesheets
     parent.appendChild(fontStyleEl);
 
-    // Apply clean, visibly lightweight font across all elements
+    // Apply clean system font stack gracefully without breaking icon fonts, symbols, or font weights
     fontStyleEl.textContent = `
-      /* Override modern framework font variables (Tailwind, Next.js, etc.) */
-      :root {
+      /* 1. Override all common CSS custom property font stacks */
+      :root, html, body {
         --font-sans: ${SYSTEM_FONT_STACK} !important;
+        --font-body: ${SYSTEM_FONT_STACK} !important;
         --font-display: ${SYSTEM_FONT_STACK} !important;
         --font-heading: ${SYSTEM_FONT_STACK} !important;
+        --font-primary: ${SYSTEM_FONT_STACK} !important;
+        --font-secondary: ${SYSTEM_FONT_STACK} !important;
+        --font-family: ${SYSTEM_FONT_STACK} !important;
+        --font-ui: ${SYSTEM_FONT_STACK} !important;
+        --font-serif: ${SYSTEM_FONT_STACK} !important;
+        --font-numeral: ${SYSTEM_FONT_STACK} !important;
         --font-geist-sans: ${SYSTEM_FONT_STACK} !important;
         --font-inter: ${SYSTEM_FONT_STACK} !important;
       }
 
-      /* Apply lightweight typography to all body text and elements */
-      html, body,
-      body *:not(code):not(pre):not(kbd):not(samp):not(i[class*="icon"]):not(i[class*="fa"]):not([class*="material-icons"]):not(.material-symbols-outlined),
-      body [class]:not(code):not(pre):not(kbd):not(samp):not(i[class*="icon"]):not(i[class*="fa"]):not([class*="material-icons"]):not(.material-symbols-outlined),
-      body [id]:not(code):not(pre):not(kbd):not(samp):not(i[class*="icon"]):not(i[class*="fa"]):not([class*="material-icons"]):not(.material-symbols-outlined) {
+      /* 2. Target text and content elements across all components with !important */
+      body,
+      p,
+      h1, h2, h3, h4, h5, h6,
+      li, td, th, label, input, textarea, select, button,
+      blockquote, figcaption, article, section,
+      div:not([class*="icon"]):not([class*="material"]):not([class*="symbol"]):not([class*="fa"]):not([aria-hidden="true"]),
+      a:not([class*="icon"]):not([class*="material"]):not([class*="symbol"]):not([class*="fa"]):not([aria-hidden="true"]),
+      span:not([class*="icon"]):not([class*="material"]):not([class*="symbol"]):not([class*="fa"]):not([aria-hidden="true"]):not([data-icon]) {
         font-family: ${SYSTEM_FONT_STACK} !important;
-        font-weight: 300 !important;
-        letter-spacing: 0.01em !important;
-        -webkit-font-smoothing: antialiased !important;
-        -moz-osx-font-smoothing: grayscale !important;
-        text-rendering: optimizeLegibility !important;
       }
 
-      /* Large display headings & titles — force ultra-lightweight (weight: 200) */
-      h1, h2, h3,
-      h1 *, h2 *, h3 *,
-      [class*="hero"], [class*="display"] {
-        font-family: ${SYSTEM_FONT_STACK} !important;
-        font-weight: 200 !important;
-        letter-spacing: -0.015em !important;
+      /* 3. Sleek lightweight styling signature for Light (300) */
+      body, p, li, td, th, label,
+      div:not([class*="icon"]):not([class*="material"]):not([class*="symbol"]):not([class*="fa"]):not([aria-hidden="true"]),
+      span:not([class*="icon"]):not([class*="material"]):not([class*="symbol"]):not([class*="fa"]):not([aria-hidden="true"]):not([data-icon]),
+      a:not([class*="icon"]):not([class*="material"]):not([class*="symbol"]):not([class*="fa"]):not([aria-hidden="true"]) {
+        font-weight: 350;
       }
 
-      /* Smaller headings & subheadings — clean light weight (weight: 300) */
-      h4, h5, h6,
-      h4 *, h5 *, h6 *,
-      [class*="title"], [class*="heading"] {
-        font-family: ${SYSTEM_FONT_STACK} !important;
-        font-weight: 300 !important;
+      /* Keep headings and emphasized text clear and readable */
+      h1, h2, h3, h4, h5, h6,
+      b, strong, [class*="bold"], [class*="title"], [class*="heading"] {
+        font-weight: 600;
       }
 
-      /* Soften heavy bold text so it stays elegant and light (weight: 400) */
-      b, strong, [class*="bold"], [class*="semibold"], [class*="black"], [class*="heavy"] {
-        font-weight: 400 !important;
-      }
-
-      /* Preserve monospace for code */
-      code, pre, kbd, samp, .font-mono, [class*="mono"], code *, pre * {
+      /* 4. Preserve monospace for code blocks */
+      code, pre, kbd, samp, .font-mono, [class*="mono"] {
         font-family: Consolas, "Liberation Mono", Menlo, Monaco, monospace !important;
-        font-weight: 400 !important;
       }
 
-      /* Preserve icon fonts */
-      i[class*="fa-"], i[class*="icon"], [class*="material-icons"], .material-symbols-outlined, [data-icon] {
-        font-family: inherit !important;
+      /* 5. Bulletproof shield for icon fonts, glyphs, and SVGs */
+      i, svg,
+      [class*="material"],
+      [class*="icon"],
+      [class*="fa-"],
+      [class*="fa"],
+      [class*="symbol"],
+      [class*="glyph"],
+      [class*="c2c"],
+      [data-icon],
+      [aria-hidden="true"],
+      .material-icons,
+      .material-symbols-outlined,
+      .material-symbols-rounded,
+      .material-symbols-sharp {
+        font-family: revert !important;
       }
     `;
     blockedResourcesCount++;
@@ -662,27 +731,9 @@
       document.head.appendChild(threeDStyleEl);
     }
 
-    // Stop animations while ensuring all text, buttons, and UI components are fully visible
+    // Safe 3D & animation reduction — NEVER touch visibility, opacity, or layout of UI components
     threeDStyleEl.textContent = `
-      /* 1. Instantly finish entrance animations so text, buttons, and layout are in settled state */
-      *, *::before, *::after {
-        animation-duration: 0.001s !important;
-        animation-delay: 0s !important;
-        animation-iteration-count: 1 !important;
-        animation-fill-mode: both !important;
-        transition-duration: 0.001s !important;
-        transition-delay: 0s !important;
-        scroll-behavior: auto !important;
-      }
-
-      /* 2. Guarantee text, headings, buttons, links, and inputs are ALWAYS visible and clickable */
-      h1, h2, h3, h4, h5, h6, p, span, a, button, input, textarea, select, [role="button"], label, code, pre, img, svg {
-        opacity: 1 !important;
-        visibility: visible !important;
-        pointer-events: auto !important;
-      }
-
-      /* 3. Stop continuous SVG and marquee animations */
+      /* 1. Stop continuous SVG and marquee animations */
       svg animate, svg animateTransform, svg animateMotion {
         display: none !important;
       }
@@ -690,10 +741,21 @@
         -webkit-marquee-repetition: 0 !important;
       }
 
-      /* 4. Disable mouse-interaction loops and set contrasting flat background for 3D canvases */
-      canvas[style*="fixed"], canvas[style*="absolute"],
-      [class*="hero"] canvas, [class*="bg"] canvas, [class*="canvas"] canvas,
-      canvas, model-viewer, spline-viewer, babylon {
+      /* 2. Pause continuous spinning, flickering, or floating decorative animations */
+      [class*="spin"], [class*="rotate"], [class*="pulse"], [class*="bounce"],
+      .lantern__body, .lantern__glow, .lantern__beam, .lantern__bob {
+        animation-play-state: paused !important;
+      }
+
+      /* 3. Hide continuous decorative particle overlays that consume heavy CPU/GPU */
+      .drift__petal, .drift__lantern, .drift,
+      .petals, .fireworks,
+      .embers img, .wind__line {
+        display: none !important;
+      }
+
+      /* 4. Disable mouse-interaction loops and set flat background ONLY for dedicated 3D model viewers */
+      model-viewer, spline-viewer, babylon {
         background-color: ${flatBgColor} !important;
         pointer-events: none !important;
       }
@@ -739,19 +801,32 @@
   // ============================================================================
 
   function scanBackgroundImages() {
-    // Fast query targeting elements with explicit background images — avoids layout thrashing
-    const candidates = document.querySelectorAll('[style*="background"], [style*="background-image"], header, [class*="hero"], [class*="banner"]');
+    // Exclude layout wrappers, navigation, forms, and interactive containers
+    const EXCLUDED_TAGS = ['HEADER', 'NAV', 'MAIN', 'FORM', 'FOOTER', 'BODY', 'HTML', 'INPUT', 'BUTTON', 'A', 'SELECT', 'TEXTAREA'];
+    const candidates = document.querySelectorAll('[style*="background"], [style*="background-image"]');
 
     let count = 0;
     for (let i = 0; i < candidates.length && count < 20; i++) {
-      const el = candidates[i];
       if (el.hasAttribute(SKELIO_BG_ATTR)) continue;
+      if (EXCLUDED_TAGS.includes(el.tagName)) continue;
+      // Skip interactive elements, accordions, buttons, cards, or non-interactive parallax layers
+      if (el.hasAttribute('role') || el.hasAttribute('aria-expanded') || el.hasAttribute('aria-controls')) continue;
+      const classStr = (el.className || '').toLowerCase();
+      if (classStr.match(/plank|accordion|collapse|btn|button|card|tab|nav|item|ridge|hero|bar/)) continue;
+
+      const comp = window.getComputedStyle(el);
+      if (comp.pointerEvents === 'none') continue;
+
+      // Skip if container has interactive children (forms, inputs, buttons, navigation links)
+      if (el.querySelector && el.querySelector('input, button, select, textarea, form, nav, h1, h2, h3, a[href]')) {
+        continue;
+      }
 
       const bgImage = el.style.backgroundImage || (el.style.background && el.style.background.includes('url(') ? el.style.background : '');
 
       if (bgImage && bgImage.includes('url(') && !bgImage.startsWith('url("data:')) {
         const rect = el.getBoundingClientRect();
-        if (rect.width > 50 && rect.height > 50) {
+        if (rect.width >= 80 && rect.height >= 80) {
           lockBackgroundImage(el, bgImage);
           count++;
         }
@@ -806,8 +881,13 @@
     element.style.removeProperty('border-radius');
 
     // Let the original CSS background-image reassert itself
-    // If it was inline, restore it
     element.style.backgroundImage = originalBg;
+
+    // Send DNR allow rule in case background image was an external URL
+    const urlMatch = originalBg.match(/url\(['"]?(.*?)['"]?\)/);
+    if (urlMatch && urlMatch[1] && !urlMatch[1].startsWith('data:')) {
+      sendToBackground({ action: 'HYDRATE_URL', url: urlMatch[1] }).catch(() => {});
+    }
 
     console.log('[SkelIO] BG image hydrated');
     syncStats();
@@ -815,7 +895,7 @@
 
   // ============================================================================
   // GLOBAL CLICK-TO-LOAD CAPTURE
-  // Catches clicks anywhere on locked elements, parent wrappers, or overlay containers
+  // Catches clicks anywhere on locked elements or locked background images
   // ============================================================================
 
   window.addEventListener('click', function globalHydrateCapture(e) {
@@ -823,6 +903,14 @@
 
     const target = e.target;
     if (!target) return;
+
+    // NEVER intercept clicks on interactive form inputs, buttons, menus, dropdowns, links, or options
+    if (target.closest && target.closest('input, textarea, select, option, label, button, [role="button"], [role="tab"], [role="menuitem"], [role="option"], a[href]')) {
+      // Allow click through unless the target itself is explicitly the locked media skeleton
+      if (!target.hasAttribute(SKELIO_ATTR) && !target.hasAttribute(SKELIO_BG_ATTR)) {
+        return;
+      }
+    }
 
     // 1. Target itself is locked
     let lockedEl = (target.hasAttribute && target.hasAttribute(SKELIO_ATTR)) ? target : null;
@@ -832,38 +920,10 @@
       lockedEl = target.closest(`[${SKELIO_ATTR}]`);
     }
 
-    // 3. Any ancestor container up to 6 levels that contains a locked element
-    if (!lockedEl) {
-      let current = target;
-      for (let depth = 0; depth < 6 && current && current !== document.body && current !== document.documentElement; depth++) {
-        if (current.querySelector) {
-          const found = current.querySelector(`[${SKELIO_ATTR}]`);
-          if (found) {
-            lockedEl = found;
-            break;
-          }
-        }
-        current = current.parentElement;
-      }
-    }
-
-    // 4. Background image lock
+    // 3. Background image lock
     let bgLockedEl = (target.hasAttribute && target.hasAttribute(SKELIO_BG_ATTR)) ? target : null;
     if (!bgLockedEl && target.closest) {
       bgLockedEl = target.closest(`[${SKELIO_BG_ATTR}]`);
-    }
-    if (!bgLockedEl) {
-      let current = target;
-      for (let depth = 0; depth < 6 && current && current !== document.body && current !== document.documentElement; depth++) {
-        if (current.querySelector) {
-          const found = current.querySelector(`[${SKELIO_BG_ATTR}]`);
-          if (found) {
-            bgLockedEl = found;
-            break;
-          }
-        }
-        current = current.parentElement;
-      }
     }
 
     if (lockedEl && lockedEl.hasAttribute(SKELIO_ATTR)) {

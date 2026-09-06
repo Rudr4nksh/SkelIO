@@ -94,7 +94,7 @@ async function activateSkelIO(tabId) {
     action: { type: 'block' },
     condition: {
       tabIds: [tabId],
-      resourceTypes: ['image', 'media', 'font']
+      resourceTypes: ['image', 'media']
     }
   };
 

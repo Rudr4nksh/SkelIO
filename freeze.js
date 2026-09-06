@@ -53,17 +53,15 @@
   } catch (e) {}
 
   function applyFreeze() {
-    // 1. Finish entrance animations so text & buttons are 100% visible immediately,
-    //    and pause infinite background loops into still frames.
+    // 1. Pause infinite background loop animations into still frames without breaking one-shot UI animations (accordions, drawers, modals)
     if (document.getAnimations) {
       document.getAnimations().forEach(anim => {
         try {
-          // Finish one-shot animations (fade-in text, buttons)
-          anim.finish();
-        } catch (e) {
-          // Infinite loop animations (pulsing backgrounds, 3D spinners) -> pause as still frame
-          try { anim.pause(); } catch (err) {}
-        }
+          const timing = anim.effect ? anim.effect.getTiming() : null;
+          if (timing && (timing.iterations === Infinity || timing.duration === Infinity || timing.iterations > 10)) {
+            anim.pause();
+          }
+        } catch (e) {}
       });
     }
 
@@ -76,7 +74,7 @@
       } catch (e) {}
     });
 
-    console.log('[SkelIO] 3D & animations frozen into still images — text and buttons preserved');
+    console.log('[SkelIO] 3D & infinite animations frozen into still images — UI controls and menus preserved');
   }
 
   function applyResume() {
