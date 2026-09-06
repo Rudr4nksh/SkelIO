@@ -1,7 +1,10 @@
 /**
  * SkelIO Content Script
- * Pure DOM-based interception - no background service worker dependency
+ * Pure DOM-based interception with CSS background-image skeletons
  * Sub-5ms geometry locking to eliminate CLS
+ * 
+ * Intercepts: img, video, iframe, audio, object, embed,
+ *             picture/source, CSS background images, web fonts, link preloads
  */
 
 (function() {
@@ -13,41 +16,27 @@
 
   const SKELIO_ATTR = 'data-skelio-locked';
   const SKELIO_HYDRATED_ATTR = 'data-skelio-hydrated';
+  const SKELIO_BG_ATTR = 'data-skelio-bg-locked';
 
   let isActive = false;
   let observer = null;
   let layoutShiftsPrevented = 0;
   let blockedResourcesCount = 0;
 
-  // Transparent 1x1 pixel - used as dummy src so YouTube can't show broken image
+  // Transparent 1x1 pixel - used as dummy src so broken image icon never shows
   const TRANSPARENT_PIXEL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
-  // Pre-compile regex - matches ?skelio, /?skelio, &skelio, etc.
-  const URL_PATTERN = /[?&/]skelio(?:=1)?(?:&|$)/i;
+  // Media element tags that get skeleton placeholders
+  const MEDIA_TARGETS = ['IMG', 'VIDEO', 'IFRAME', 'AUDIO', 'OBJECT', 'EMBED'];
+
+  // Lightweight modern system font stack used when web fonts are swapped
+  const SYSTEM_FONT_STACK = '"Segoe UI Variable Display", "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif';
 
   // ============================================================================
   // NETWORK DETECTION
   // ============================================================================
 
   function shouldActivateSkelIO() {
-    // Check URL parameters first (with fallback to href for redirect cases)
-    const hasParam = URL_PATTERN.test(window.location.search) || URL_PATTERN.test(window.location.href);
-
-    if (hasParam) {
-      // Remove the skelio parameter from the URL so it doesn't appear in search results
-      const url = new URL(window.location.href);
-      url.searchParams.delete('skelio');
-      // Also remove if it's just ?skelio without value
-      if (url.searchParams.toString() === '') {
-        url.search = '';
-        history.replaceState({}, document.title, url.pathname + url.hash);
-      } else {
-        history.replaceState({}, document.title, url.pathname + '?' + url.search);
-      }
-      return true;
-    }
-
-    // Check Network Information API
     const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
 
     if (conn) {
@@ -81,23 +70,38 @@
       if (element.style.height) height = parseInt(element.style.height, 10) || height;
     }
 
-    // Priority 3: Parent container
+    // Priority 3: Element's own bounding rect
+    if (!width || !height) {
+      const rect = element.getBoundingClientRect();
+      if (!width && rect.width > 0) width = Math.floor(rect.width);
+      if (!height && rect.height > 0) height = Math.floor(rect.height);
+    }
+
+    // Priority 4: Parent container
     if (!width || !height) {
       const parent = element.parentElement;
       if (parent) {
         const parentRect = parent.getBoundingClientRect();
-        if (!width && parentRect.width > 0) width = Math.floor(parentRect.width);
-        if (!height && parentRect.height > 0) height = Math.floor(parentRect.height);
+        if (!width && parentRect.width > 0) width = Math.min(Math.floor(parentRect.width), 800);
+        if (!height && parentRect.height > 0) height = Math.min(Math.floor(parentRect.height), 600);
       }
     }
 
-    // Priority 4: Aspect ratio fallback
+    // Priority 5: Aspect ratio fallback
     if (width && !height) height = Math.floor(width * 9 / 16);
     else if (height && !width) width = Math.floor(height * 16 / 9);
 
-    // Priority 5: Defaults
-    if (!width) width = 300;
-    if (!height) height = 200;
+    // Priority 6: Detect icons/avatars to avoid giant boxes
+    if (!width || !height) {
+      const isIcon = (element.className + ' ' + (element.parentElement?.className || '')).toLowerCase().match(/icon|avatar|badge|logo|thumb|btn/);
+      if (isIcon) {
+        width = width || 32;
+        height = height || 32;
+      } else {
+        width = width || 300;
+        height = height || 200;
+      }
+    }
 
     return { width, height };
   }
@@ -106,43 +110,10 @@
   // SVG SKELETON GENERATION
   // ============================================================================
 
-  // Adaptive color detection: sample the page's background and compute contrasting text
-  function getAdaptiveColor(element) {
-    // Try to get computed background color from the element or its parent
-    let bgColor = '#1E1E1E'; // default dark
-    let textColor = '#FFFFFF'; // default white
+  function createSkeletonSVG(width, height, label) {
+    const mainText = label || 'REMOVED BY SKELIO';
+    const subText = 'Click to load';
 
-    // Check element's computed style
-    const computed = window.getComputedStyle(element);
-    const bg = computed.backgroundColor;
-    if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
-      // Simple heuristic: if bg looks light, use dark text, else light text
-      const rgb = parseColor(bg);
-      if (rgb) {
-        const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
-        if (luminance > 0.5) {
-          textColor = '#000000';
-        } else {
-          textColor = '#FFFFFF';
-        }
-      }
-    }
-
-    // For images, try to detect website background by sampling a nearby element
-    // or use the stored adaptive color
-    return { bgColor: bgColor, textColor: textColor };
-  }
-
-  function parseColor(str) {
-    // Parse rgb(), rgba(), #hex, or named colors
-    const m = str.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
-    if (m) return { r: parseInt(m[1]), g: parseInt(m[2]), b: parseInt(m[3]) };
-    const m2 = str.match(/^#([a-fA-F0-9]{2})([a-fA-F0-9]{2})([a-fA-F0-9]{2})$/);
-    if (m2) return { r: parseInt(m2[1], 16), g: parseInt(m2[2], 16), b: parseInt(m2[3], 16) };
-    return null;
-  }
-
-  function createSkeletonSVG(width, height, element) {
     // For very small images (icons), just show a solid box without text
     if (width < 50 || height < 50) {
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
@@ -152,150 +123,534 @@
       return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
     }
 
-    // Get adaptive text color based on detected background
-    const adaptive = getAdaptiveColor(element || document.body);
-
-    // For larger images, show full text with adaptive coloring
     const fontSize = Math.max(14, Math.min(width / 12, height / 6));
     const smallFontSize = Math.max(11, fontSize * 0.75);
 
-    // Rounded corners for a cleaner look
-    const radius = Math.min(width, height) * 0.1; // 10% of smaller dimension
-
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-      <rect width="100%" height="100%" fill="#1E1E1E" rx="${radius}" ry="${radius}"/>
-      <rect width="100%" height="100%" fill="none" stroke="${adaptive.textColor}" stroke-width="2" stroke-opacity="0.2" stroke-dasharray="8,4"/>
-      <text x="50%" y="40%" text-anchor="middle" fill="${adaptive.textColor}" fill-opacity="0.95" font-family="system-ui, Arial, sans-serif" font-size="${fontSize}" font-weight="700" letter-spacing="0.5" dominant-baseline="middle">REMOVED BY SKELIO</text>
-      <text x="50%" y="60%" text-anchor="middle" fill="${adaptive.textColor}" fill-opacity="0.7" font-family="system-ui, Arial, sans-serif" font-size="${smallFontSize}" font-weight="400" dominant-baseline="middle">Click to load</text>
+      <rect width="100%" height="100%" fill="#0F0F0F" rx="8" ry="8"/>
+      <rect width="100%" height="100%" fill="none" stroke="#666666" stroke-width="3" rx="8" ry="8"/>
+      <text x="50%" y="45%" text-anchor="middle" dominant-baseline="middle" fill="#FFFFFF" fill-opacity="0.95" font-family="system-ui, Arial, sans-serif" font-size="${fontSize}" font-weight="700" letter-spacing="0.5">${mainText}</text>
+      <text x="50%" y="62%" text-anchor="middle" dominant-baseline="middle" fill="#CCCCCC" fill-opacity="0.9" font-family="system-ui, Arial, sans-serif" font-size="${smallFontSize}" font-weight="400">${subText}</text>
     </svg>`;
 
     return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
   }
 
   // ============================================================================
-  // ELEMENT LOCKING & HYDRATION
+  // MEDIA ELEMENT LOCKING & HYDRATION
   // ============================================================================
 
   function lockElement(element) {
-    // Skip if already processed
     if (element.hasAttribute(SKELIO_ATTR) || element.hasAttribute(SKELIO_HYDRATED_ATTR)) {
       return;
     }
 
-    const { width, height } = extractGeometry(element);
+    const tag = element.tagName;
 
-    // Store original src
-    const originalSrc = element.src || element.currentSrc || element.data || element.poster;
-    if (!originalSrc || originalSrc.startsWith('data:') || originalSrc.startsWith('blob:') || originalSrc.startsWith('about:')) {
-      return; // Skip data URIs, blob URLs, internal frames, and elements without src
+    // Get original source
+    let originalSrc = element.src || element.currentSrc || element.data || element.poster;
+    if (tag === 'VIDEO' || tag === 'AUDIO') {
+      if (!originalSrc || originalSrc.startsWith('blob:') || originalSrc.startsWith('data:')) {
+        const sourceEl = element.querySelector('source');
+        if (sourceEl && sourceEl.src) {
+          originalSrc = sourceEl.src;
+        }
+      }
     }
 
+    if (!originalSrc || originalSrc.startsWith('data:') || originalSrc.startsWith('blob:') || originalSrc.startsWith('about:')) {
+      return;
+    }
+
+    const { width, height } = extractGeometry(element);
     element.dataset.skelioOriginalSrc = originalSrc;
 
-    // Set explicit dimensions to lock geometry
-    element.style.width = width + 'px';
-    element.style.height = height + 'px';
-    element.style.minWidth = width + 'px';
-    element.style.minHeight = height + 'px';
-    element.style.display = 'inline-block';
-    element.style.visibility = 'visible';
-    element.style.backgroundColor = '#1E1E1E';
-    element.style.cursor = 'pointer';
-    element.style.border = '2px solid #3A3A3A';
-    element.style.boxSizing = 'border-box';
+    // Determine label based on element type
+    let label = 'REMOVED BY SKELIO';
+    if (tag === 'VIDEO') label = 'VIDEO BLOCKED';
+    else if (tag === 'AUDIO') label = 'AUDIO BLOCKED';
+    else if (tag === 'IFRAME') label = 'IFRAME BLOCKED';
+    else if (tag === 'OBJECT' || tag === 'EMBED') label = 'EMBED BLOCKED';
 
-    // Generate skeleton
-    const skeletonSVG = createSkeletonSVG(width, height, element);
+    const skeletonSVG = createSkeletonSVG(width, height, label);
 
-    // FORCE replace src immediately - don't let browser load original
-    if (element.tagName === 'IMG') {
-      element.removeAttribute('srcset'); // Remove srcset to prevent fallback loading
-      element.removeAttribute('loading'); // Remove lazy loading
-      element.src = skeletonSVG;
-    } else if (element.tagName === 'VIDEO') {
+    // Lock geometry with !important to resist page CSS overrides
+    element.style.setProperty('width', width + 'px', 'important');
+    element.style.setProperty('height', height + 'px', 'important');
+    element.style.setProperty('min-width', width + 'px', 'important');
+    element.style.setProperty('min-height', height + 'px', 'important');
+    element.style.setProperty('display', 'inline-block', 'important');
+    element.style.setProperty('visibility', 'visible', 'important');
+    element.style.setProperty('cursor', 'pointer', 'important');
+    element.style.setProperty('box-sizing', 'border-box', 'important');
+
+    // Skeleton via CSS background-image (page JS can't overwrite this)
+    element.style.setProperty('background-image', `url("${skeletonSVG}")`, 'important');
+    element.style.setProperty('background-size', '100% 100%', 'important');
+    element.style.setProperty('background-repeat', 'no-repeat', 'important');
+    element.style.setProperty('background-color', '#1E1E1E', 'important');
+
+    // Tag-specific source replacement
+    if (tag === 'IMG') {
+      // Handle <picture> parent — strip all <source> srcsets
+      const picture = element.closest('picture');
+      if (picture) {
+        const sources = picture.querySelectorAll('source');
+        const savedSrcsets = [];
+        sources.forEach(source => {
+          savedSrcsets.push(source.srcset || '');
+          source.removeAttribute('srcset');
+          source.removeAttribute('src');
+        });
+        element.dataset.skelioPictureSrcsets = JSON.stringify(savedSrcsets);
+      }
+
+      element.removeAttribute('srcset');
+      element.removeAttribute('loading');
+      element.src = TRANSPARENT_PIXEL;
+
+      // Error handler: if page JS overwrites src, DNR blocks it → reset to transparent
+      element.addEventListener('error', function() {
+        if (element.hasAttribute(SKELIO_ATTR) && !element.hasAttribute(SKELIO_HYDRATED_ATTR)) {
+          element.src = TRANSPARENT_PIXEL;
+        }
+      });
+
+    } else if (tag === 'VIDEO') {
+      element.pause && element.pause();
+      element.dataset.skelioOriginalPoster = element.poster || '';
       element.poster = skeletonSVG;
+      element.removeAttribute('autoplay');
+      element.removeAttribute('loop');
+
+    } else if (tag === 'AUDIO') {
       element.preload = 'none';
       element.removeAttribute('autoplay');
-    } else if (element.tagName === 'IFRAME') {
+      element.pause && element.pause();
+      element.querySelectorAll('source').forEach(s => {
+        s.dataset.skelioSrc = s.src;
+        s.removeAttribute('src');
+      });
+
+    } else if (tag === 'IFRAME') {
       element.srcdoc = `<body style="margin:0;background:#1E1E1E;display:flex;align-items:center;justify-content:center;height:100vh;color:#FFF;font-family:system-ui;font-size:14px;">Click to load iframe</body>`;
+
+    } else if (tag === 'OBJECT') {
+      element.dataset.skelioOriginalData = element.data;
+      element.data = '';
+
+    } else if (tag === 'EMBED') {
+      element.dataset.skelioOriginalData = element.src;
+      element.src = '';
     }
 
     // Mark as locked
     element.setAttribute(SKELIO_ATTR, 'true');
     element.title = 'Click to load (SkelIO)';
 
-    // Add click handler for hydration
+    // Click-to-hydrate
     element.addEventListener('click', function hydrateHandler(e) {
+      if (!element.hasAttribute(SKELIO_ATTR)) return;
       e.preventDefault();
       e.stopPropagation();
-      console.log('[SkelIO] Click detected on:', element.tagName, element.dataset.skelioOriginalSrc?.substring(0, 80));
-      console.log('[SkelIO] Element tag:', element.tagName, 'has hydrated attr:', element.hasAttribute(SKELIO_HYDRATED_ATTR));
       hydrateElement(element);
-      element.removeEventListener('click', hydrateHandler);
-    }, { once: true, capture: true });
+    }, { capture: true });
 
     // Stats
     layoutShiftsPrevented++;
     blockedResourcesCount++;
 
-    console.log('[SkelIO] Locked:', element.tagName, width + 'x' + height, originalSrc.substring(0, 50));
+    console.log('[SkelIO] Locked:', tag, width + 'x' + height, originalSrc.substring(0, 60));
   }
 
   function hydrateElement(element) {
     const originalSrc = element.dataset.skelioOriginalSrc;
-    if (!originalSrc) {
-      console.warn('[SkelIO] Cannot hydrate - no original src stored. Checking attrs...');
-      console.warn('[SkelIO] SKELIO_ATTR:', element.hasAttribute(SKELIO_ATTR), 'SKELIO_HYDRATED_ATTR:', element.hasAttribute(SKELIO_HYDRATED_ATTR));
-      console.warn('[SkelIO] dataset keys:', Object.keys(element.dataset));
-      return;
-    }
+    if (!originalSrc) return;
 
-    console.log('[SkelIO] Hydrating element, restoring src:', originalSrc.substring(0, 100));
-    console.log('[SkelIO] Original src type:', typeof originalSrc);
+    const tag = element.tagName;
 
     element.setAttribute(SKELIO_HYDRATED_ATTR, 'true');
     element.removeAttribute(SKELIO_ATTR);
     element.style.cursor = 'default';
     element.title = 'Loading...';
-    element.style.opacity = '0.6';
-    element.style.border = 'none'; // Remove skeleton border
+    element.style.opacity = '0.5';
 
-    // Restore original src
-    if (element.tagName === 'IMG') {
-      const img = element;
-      img.onload = () => {
-        img.style.opacity = '1';
-        img.title = '';
-        img.style.backgroundColor = 'transparent';
-        console.log('[SkelIO] Image loaded successfully');
+    // Clear skeleton background
+    element.style.removeProperty('background-image');
+    element.style.removeProperty('background-size');
+    element.style.removeProperty('background-repeat');
+    element.style.removeProperty('background-color');
+
+    // Tell background to allow this URL through DNR
+    sendToBackground({ action: 'HYDRATE_URL', url: originalSrc }).catch(() => {});
+
+    if (tag === 'IMG') {
+      // Restore <picture> <source> srcsets
+      const picture = element.closest('picture');
+      if (picture && element.dataset.skelioPictureSrcsets) {
+        try {
+          const srcsets = JSON.parse(element.dataset.skelioPictureSrcsets);
+          const sources = picture.querySelectorAll('source');
+          sources.forEach((source, i) => {
+            if (srcsets[i]) source.srcset = srcsets[i];
+          });
+        } catch (e) {}
+      }
+
+      element.onload = () => {
+        element.style.opacity = '1';
+        element.title = '';
       };
-      img.onerror = () => {
-        console.error('[SkelIO] Image failed to load:', originalSrc.substring(0, 80));
-        img.style.opacity = '1';
-        img.style.backgroundColor = '#FF0000';
-        img.title = 'Failed to load';
+      element.onerror = () => {
+        element.style.opacity = '1';
+        element.title = 'Failed to load';
       };
-      img.src = originalSrc;
-    } else if (element.tagName === 'VIDEO') {
       element.src = originalSrc;
-      element.poster = '';
+
+    } else if (tag === 'VIDEO') {
+      element.removeAttribute('poster');
+      if (element.dataset.skelioOriginalPoster) {
+        element.poster = element.dataset.skelioOriginalPoster;
+      }
+      element.src = originalSrc;
       element.load();
       element.style.opacity = '1';
       element.title = '';
-      element.style.backgroundColor = 'transparent';
-    } else if (element.tagName === 'IFRAME') {
+      try {
+        element.play && element.play().catch(() => {});
+      } catch (e) {}
+
+    } else if (tag === 'AUDIO') {
+      element.querySelectorAll('source').forEach(s => {
+        if (s.dataset.skelioSrc) s.src = s.dataset.skelioSrc;
+      });
       element.src = originalSrc;
-      element.srcdoc = '';
+      element.load();
       element.style.opacity = '1';
       element.title = '';
-      element.style.backgroundColor = 'transparent';
+
+    } else if (tag === 'IFRAME') {
+      element.removeAttribute('srcdoc');
+      element.src = originalSrc;
+      element.style.opacity = '1';
+      element.title = '';
+
+    } else if (tag === 'OBJECT') {
+      element.data = element.dataset.skelioOriginalData || originalSrc;
+      element.style.opacity = '1';
+      element.title = '';
+
+    } else if (tag === 'EMBED') {
+      element.src = element.dataset.skelioOriginalData || originalSrc;
+      element.style.opacity = '1';
+      element.title = '';
     }
 
-    console.log('[SkelIO] Hydration initiated for:', element.tagName);
+    console.log('[SkelIO] Hydrated:', tag, originalSrc.substring(0, 60));
+    updateStats();
+  }
 
-    // Update stats (debounced)
-    if (layoutShiftsPrevented % 5 === 0) {
-      updateStats();
+  // ============================================================================
+  // WEB FONT INTERCEPTION
+  // ============================================================================
+
+  let fontStyleEl = null;
+
+  function ensureFontStyleLast() {
+    if (!fontStyleEl) return;
+    const parent = document.head || document.documentElement;
+    if (parent && parent.lastElementChild !== fontStyleEl) {
+      parent.appendChild(fontStyleEl);
+    }
+  }
+
+  function blockWebFonts() {
+    const parent = document.head || document.documentElement;
+    if (!parent) {
+      requestAnimationFrame(blockWebFonts);
+      return;
+    }
+
+    if (!fontStyleEl) {
+      fontStyleEl = document.createElement('style');
+      fontStyleEl.id = 'skelio-font-block';
+    }
+
+    // Always append as the last child to take precedence over all existing stylesheets
+    parent.appendChild(fontStyleEl);
+
+    // Apply clean, visibly lightweight font across all elements
+    fontStyleEl.textContent = `
+      /* Override modern framework font variables (Tailwind, Next.js, etc.) */
+      :root {
+        --font-sans: ${SYSTEM_FONT_STACK} !important;
+        --font-display: ${SYSTEM_FONT_STACK} !important;
+        --font-heading: ${SYSTEM_FONT_STACK} !important;
+        --font-geist-sans: ${SYSTEM_FONT_STACK} !important;
+        --font-inter: ${SYSTEM_FONT_STACK} !important;
+      }
+
+      /* Apply lightweight typography to all body text and elements */
+      html, body,
+      body *:not(code):not(pre):not(kbd):not(samp):not(i[class*="icon"]):not(i[class*="fa"]):not([class*="material-icons"]):not(.material-symbols-outlined),
+      body [class]:not(code):not(pre):not(kbd):not(samp):not(i[class*="icon"]):not(i[class*="fa"]):not([class*="material-icons"]):not(.material-symbols-outlined),
+      body [id]:not(code):not(pre):not(kbd):not(samp):not(i[class*="icon"]):not(i[class*="fa"]):not([class*="material-icons"]):not(.material-symbols-outlined) {
+        font-family: ${SYSTEM_FONT_STACK} !important;
+        font-weight: 300 !important;
+        letter-spacing: 0.01em !important;
+        -webkit-font-smoothing: antialiased !important;
+        -moz-osx-font-smoothing: grayscale !important;
+        text-rendering: optimizeLegibility !important;
+      }
+
+      /* Large display headings & titles — force ultra-lightweight (weight: 200) */
+      h1, h2, h3,
+      h1 *, h2 *, h3 *,
+      [class*="hero"], [class*="display"] {
+        font-family: ${SYSTEM_FONT_STACK} !important;
+        font-weight: 200 !important;
+        letter-spacing: -0.015em !important;
+      }
+
+      /* Smaller headings & subheadings — clean light weight (weight: 300) */
+      h4, h5, h6,
+      h4 *, h5 *, h6 *,
+      [class*="title"], [class*="heading"] {
+        font-family: ${SYSTEM_FONT_STACK} !important;
+        font-weight: 300 !important;
+      }
+
+      /* Soften heavy bold text so it stays elegant and light (weight: 400) */
+      b, strong, [class*="bold"], [class*="semibold"], [class*="black"], [class*="heavy"] {
+        font-weight: 400 !important;
+      }
+
+      /* Preserve monospace for code */
+      code, pre, kbd, samp, .font-mono, [class*="mono"], code *, pre * {
+        font-family: Consolas, "Liberation Mono", Menlo, Monaco, monospace !important;
+        font-weight: 400 !important;
+      }
+
+      /* Preserve icon fonts */
+      i[class*="fa-"], i[class*="icon"], [class*="material-icons"], .material-symbols-outlined, [data-icon] {
+        font-family: inherit !important;
+      }
+    `;
+    blockedResourcesCount++;
+    sendToBackground({ action: 'BLOCK_FONTS' }).catch(() => {});
+    console.log('[SkelIO] Lightweight typography applied');
+  }
+
+  function restoreWebFonts() {
+    if (fontStyleEl) {
+      fontStyleEl.remove();
+      fontStyleEl = null;
+      console.log('[SkelIO] Web fonts restored');
+    }
+    // Tell background service worker to unblock font downloads via DNR
+    sendToBackground({ action: 'ALLOW_FONTS' }).catch(() => {});
+  }
+
+  // ============================================================================
+  // 3D & ANIMATION REMOVER (Kill all animations, freeze to still images)
+  // ============================================================================
+
+  let threeDStyleEl = null;
+
+  function freezeVideos() {
+    document.querySelectorAll('video').forEach(vid => {
+      try {
+        vid.pause();
+        vid.removeAttribute('autoplay');
+        vid.removeAttribute('loop');
+      } catch (e) {}
+    });
+  }
+
+  function simplify3DWebsites() {
+    if (!document.head) {
+      requestAnimationFrame(simplify3DWebsites);
+      return;
+    }
+
+    // Determine base text color (sampling body or defaulting to dark/light)
+    let bodyColor = window.getComputedStyle(document.body || document.documentElement).color || 'rgb(255, 255, 255)';
+    let isLightText = true;
+    const rgbMatch = bodyColor.match(/\d+/g);
+    if (rgbMatch && rgbMatch.length >= 3) {
+      const r = parseInt(rgbMatch[0], 10);
+      const g = parseInt(rgbMatch[1], 10);
+      const b = parseInt(rgbMatch[2], 10);
+      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+      isLightText = brightness > 128;
+    }
+
+    // Background color completely opposite to text color (flat, clean, no text overlays)
+    const flatBgColor = isLightText ? '#0E0E10' : '#FAFAFA';
+
+    if (!threeDStyleEl) {
+      threeDStyleEl = document.createElement('style');
+      threeDStyleEl.id = 'skelio-3d-simplifier';
+      document.head.appendChild(threeDStyleEl);
+    }
+
+    // Stop animations while ensuring all text, buttons, and UI components are fully visible
+    threeDStyleEl.textContent = `
+      /* 1. Instantly finish entrance animations so text, buttons, and layout are in settled state */
+      *, *::before, *::after {
+        animation-duration: 0.001s !important;
+        animation-delay: 0s !important;
+        animation-iteration-count: 1 !important;
+        animation-fill-mode: both !important;
+        transition-duration: 0.001s !important;
+        transition-delay: 0s !important;
+        scroll-behavior: auto !important;
+      }
+
+      /* 2. Guarantee text, headings, buttons, links, and inputs are ALWAYS visible and clickable */
+      h1, h2, h3, h4, h5, h6, p, span, a, button, input, textarea, select, [role="button"], label, code, pre, img, svg {
+        opacity: 1 !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+      }
+
+      /* 3. Stop continuous SVG and marquee animations */
+      svg animate, svg animateTransform, svg animateMotion {
+        display: none !important;
+      }
+      marquee {
+        -webkit-marquee-repetition: 0 !important;
+      }
+
+      /* 4. Disable mouse-interaction loops and set contrasting flat background for 3D canvases */
+      canvas[style*="fixed"], canvas[style*="absolute"],
+      [class*="hero"] canvas, [class*="bg"] canvas, [class*="canvas"] canvas,
+      canvas, model-viewer, spline-viewer, babylon {
+        background-color: ${flatBgColor} !important;
+        pointer-events: none !important;
+      }
+    `;
+
+    // Pause all playing/looping videos to still frames
+    freezeVideos();
+
+    // Ensure MAIN world hook is present
+    function ensureMainWorldHook() {
+      if (document.getElementById('skelio-freeze-script')) return;
+      try {
+        const s = document.createElement('script');
+        s.id = 'skelio-freeze-script';
+        s.src = chrome.runtime.getURL('freeze.js');
+        (document.head || document.documentElement).appendChild(s);
+      } catch (e) {}
+    }
+    ensureMainWorldHook();
+
+    // Notify MAIN world script (freeze.js) to freeze requestAnimationFrame loops & Web Animations API
+    window.postMessage({ type: 'SKELIO_FREEZE_ANIMATIONS', freeze: true }, '*');
+
+    console.log('[SkelIO] All animations frozen into still images, contrast bg:', flatBgColor);
+  }
+
+  function restore3DWebsites() {
+    if (threeDStyleEl) {
+      threeDStyleEl.remove();
+      threeDStyleEl = null;
+      // Notify MAIN world script (freeze.js) to resume
+      window.postMessage({ type: 'SKELIO_FREEZE_ANIMATIONS', freeze: false }, '*');
+      console.log('[SkelIO] Animations and 3D backgrounds restored');
+    }
+  }
+
+  // ============================================================================
+  // CSS BACKGROUND IMAGE INTERCEPTION
+  // ============================================================================
+
+  function scanBackgroundImages() {
+    // Fast query targeting elements with explicit background images — avoids layout thrashing
+    const candidates = document.querySelectorAll('[style*="background"], [style*="background-image"], header, [class*="hero"], [class*="banner"]');
+
+    let count = 0;
+    for (let i = 0; i < candidates.length && count < 20; i++) {
+      const el = candidates[i];
+      if (el.hasAttribute(SKELIO_BG_ATTR)) continue;
+
+      const bgImage = el.style.backgroundImage || (el.style.background && el.style.background.includes('url(') ? el.style.background : '');
+
+      if (bgImage && bgImage.includes('url(') && !bgImage.startsWith('url("data:')) {
+        const rect = el.getBoundingClientRect();
+        if (rect.width > 50 && rect.height > 50) {
+          lockBackgroundImage(el, bgImage);
+          count++;
+        }
+      }
+    }
+
+    if (count > 0) {
+      console.log('[SkelIO] Locked', count, 'CSS background images');
+    }
+  }
+
+  function lockBackgroundImage(element, originalBg) {
+    element.dataset.skelioOriginalBg = originalBg;
+    element.setAttribute(SKELIO_BG_ATTR, 'true');
+
+    const rect = element.getBoundingClientRect();
+    const width = Math.floor(rect.width);
+    const height = Math.floor(rect.height);
+    const skeletonSVG = createSkeletonSVG(width, height, 'BG IMAGE BLOCKED');
+
+    element.style.setProperty('background-image', `url("${skeletonSVG}")`, 'important');
+    element.style.setProperty('background-size', '100% 100%', 'important');
+    element.style.setProperty('background-repeat', 'no-repeat', 'important');
+    element.style.setProperty('cursor', 'pointer', 'important');
+
+    // Click-to-restore
+    element.addEventListener('click', function bgHydrateHandler(e) {
+      if (!element.hasAttribute(SKELIO_BG_ATTR)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      hydrateBackgroundImage(element);
+      element.removeEventListener('click', bgHydrateHandler);
+    }, { once: true, capture: true });
+
+    blockedResourcesCount++;
+  }
+
+  function hydrateBackgroundImage(element) {
+    const originalBg = element.dataset.skelioOriginalBg;
+    if (!originalBg) return;
+
+    element.removeAttribute(SKELIO_BG_ATTR);
+    element.style.removeProperty('background-image');
+    element.style.removeProperty('background-size');
+    element.style.removeProperty('background-repeat');
+    element.style.removeProperty('cursor');
+
+    // Let the original CSS background-image reassert itself
+    // If it was inline, restore it
+    element.style.backgroundImage = originalBg;
+
+    console.log('[SkelIO] BG image hydrated');
+    updateStats();
+  }
+
+  // ============================================================================
+  // LINK PRELOAD / PREFETCH REMOVAL
+  // ============================================================================
+
+  function removePreloads() {
+    const preloads = document.querySelectorAll(
+      'link[rel="preload"][as="image"], link[rel="preload"][as="video"], link[rel="preload"][as="audio"], link[rel="preload"][as="font"], link[rel="prefetch"][as="image"], link[rel="prefetch"][as="font"]'
+    );
+
+    preloads.forEach(link => {
+      link.remove();
+      blockedResourcesCount++;
+    });
+
+    if (preloads.length > 0) {
+      console.log('[SkelIO] Removed', preloads.length, 'preload/prefetch hints');
     }
   }
 
@@ -304,20 +659,35 @@
   // ============================================================================
 
   function setupObserver() {
-    const TARGETS = ['IMG', 'VIDEO', 'IFRAME'];
-
     observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         if (mutation.type === 'childList') {
           for (const node of mutation.addedNodes) {
             if (node.nodeType !== 1) continue;
 
-            if (TARGETS.includes(node.tagName)) {
+            // Lock media elements
+            if (MEDIA_TARGETS.includes(node.tagName)) {
               lockElement(node);
             }
 
+            // Remove dynamically added preloads
+            if (node.tagName === 'LINK') {
+              const rel = node.getAttribute('rel');
+              const as = node.getAttribute('as');
+              if ((rel === 'preload' || rel === 'prefetch') && ['image', 'video', 'audio', 'font'].includes(as)) {
+                node.remove();
+                blockedResourcesCount++;
+              }
+            }
+
+            // If 3D/animation simplifier is active, pause new videos to still frames
+            if (threeDStyleEl && node.tagName === 'VIDEO') {
+              try { node.pause(); node.removeAttribute('autoplay'); node.removeAttribute('loop'); } catch (e) {}
+            }
+
+            // Scan children
             if (node.querySelectorAll) {
-              const targets = node.querySelectorAll(TARGETS.join(','));
+              const targets = node.querySelectorAll(MEDIA_TARGETS.join(','));
               for (let i = 0; i < targets.length && i < 50; i++) {
                 lockElement(targets[i]);
               }
@@ -325,18 +695,12 @@
           }
         } else if (mutation.type === 'attributes') {
           const target = mutation.target;
-          if (target.nodeType === 1 && TARGETS.includes(target.tagName)) {
-            // If already locked but page JS overwrote src, re-force the skeleton
+          if (target.nodeType === 1 && MEDIA_TARGETS.includes(target.tagName)) {
             if (target.hasAttribute(SKELIO_ATTR) && !target.hasAttribute(SKELIO_HYDRATED_ATTR)) {
-              const currentSrc = target.src || target.poster || '';
-              if (!currentSrc.startsWith('data:image/svg+xml')) {
-                const { width, height } = extractGeometry(target);
-                if (target.tagName === 'IMG') {
-                  target.removeAttribute('srcset');
-                  target.src = createSkeletonSVG(width, height, target);
-                } else if (target.tagName === 'VIDEO') {
-                  target.poster = createSkeletonSVG(width, height, target);
-                }
+              // Already locked — page JS overwrote src, reset to transparent pixel
+              const currentSrc = target.src || '';
+              if (target.tagName === 'IMG' && !currentSrc.startsWith('data:')) {
+                target.src = TRANSPARENT_PIXEL;
               }
             } else {
               lockElement(target);
@@ -344,25 +708,36 @@
           }
         }
       }
+
+      if (fontStyleEl) {
+        ensureFontStyleLast();
+      }
     });
 
     observer.observe(document.documentElement, {
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ['src', 'srcset', 'poster', 'data']
+      attributeFilter: ['src', 'srcset', 'poster', 'data', 'url']
     });
 
-    console.log('[SkelIO] MutationObserver activated (childList + attributes)');
+    console.log('[SkelIO] MutationObserver active');
   }
 
   function lockExistingElements() {
-    const elements = document.querySelectorAll('img, video, iframe');
-    console.log('[SkelIO] Locking', elements.length, 'existing elements');
+    // Lock all media elements
+    const elements = document.querySelectorAll(MEDIA_TARGETS.map(t => t.toLowerCase()).join(', '));
+    console.log('[SkelIO] Locking', elements.length, 'existing media elements');
 
     for (let i = 0; i < elements.length; i++) {
       lockElement(elements[i]);
     }
+
+    // Remove preloads
+    removePreloads();
+
+    // Scan background images (deferred slightly for computed styles to settle)
+    setTimeout(scanBackgroundImages, 500);
   }
 
   // ============================================================================
@@ -374,10 +749,10 @@
       chrome.storage.local.set({
         layoutShiftsPrevented,
         totalBlockedResources: blockedResourcesCount,
-        totalBandwidthSaved: blockedResourcesCount * 500000 // Estimate 500KB per asset
+        totalBandwidthSaved: blockedResourcesCount * 500000
       });
     } catch (err) {
-      console.warn('[SkelIO] Failed to update stats:', err);
+      // silently fail
     }
   }
 
@@ -391,7 +766,6 @@
         const response = await chrome.runtime.sendMessage(message);
         if (response) return response;
       } catch (err) {
-        console.warn(`[SkelIO] Background message failed (attempt ${i + 1}/${retries}):`, err.message);
         if (i < retries - 1) await new Promise(r => setTimeout(r, 100 * (i + 1)));
       }
     }
@@ -408,39 +782,108 @@
     console.log('[SkelIO] Activating...');
     isActive = true;
 
-    // Notify background service worker (optional - DNR blocking)
-    sendToBackground({ action: 'ACTIVATE_SKELIO' }).then(res => {
-      console.log('[SkelIO] Background DNR activation:', res);
-    }).catch(err => {
-      console.warn('[SkelIO] Background DNR activation failed (DOM-only mode):', err.message);
-    });
+    // Tell background to set up DNR blocking rules
+    sendToBackground({ action: 'ACTIVATE_SKELIO' }).catch(() => {});
 
-    // Lock existing elements immediately
-    lockExistingElements();
+    // Block web fonts immediately
+    blockWebFonts();
 
-    // Also lock after DOM loads
+    // Simplify 3D websites: replace GPU-heavy 3D backgrounds with contrasting flat backgrounds
+    simplify3DWebsites();
+
+    // Lock existing elements
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', lockExistingElements, { once: true });
+    } else {
+      lockExistingElements();
     }
 
-    // Setup observer for new elements
+    // Setup observer for dynamically added elements
     setupObserver();
 
     console.log('[SkelIO] Activated successfully');
+  }
+
+  async function deactivateSkelIO() {
+    if (!isActive) return;
+
+    console.log('[SkelIO] Deactivating...');
+    isActive = false;
+
+    // Disconnect MutationObserver
+    if (observer) {
+      observer.disconnect();
+      observer = null;
+    }
+
+    // Restore web fonts
+    restoreWebFonts();
+
+    // Restore 3D backgrounds
+    restore3DWebsites();
+
+    // Hydrate all currently locked elements
+    const lockedElements = document.querySelectorAll(`[${SKELIO_ATTR}]`);
+    lockedElements.forEach(el => hydrateElement(el));
+
+    // Restore all locked CSS background images
+    const bgLockedElements = document.querySelectorAll(`[${SKELIO_BG_ATTR}]`);
+    bgLockedElements.forEach(el => hydrateBackgroundImage(el));
+
+    // Tell background service worker to remove DNR rules
+    sendToBackground({ action: 'DEACTIVATE_SKELIO' }).catch(() => {});
+
+    console.log('[SkelIO] Deactivated successfully');
   }
 
   // ============================================================================
   // INITIALIZATION
   // ============================================================================
 
-  function init() {
+  // Listen for messages from popup toggle
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'SKELIO_ACTIVATE') {
+      activateSkelIO();
+      sendResponse({ success: true, active: isActive });
+    } else if (message.action === 'SKELIO_DEACTIVATE') {
+      deactivateSkelIO();
+      sendResponse({ success: true, active: isActive });
+    } else if (message.action === 'SKELIO_STATUS') {
+      sendResponse({ active: isActive, fontsBlocked: !!fontStyleEl, simplified3D: !!threeDStyleEl });
+    } else if (message.action === 'SKELIO_RESTORE_FONTS') {
+      restoreWebFonts();
+      sendResponse({ success: true, fontsBlocked: false });
+    } else if (message.action === 'SKELIO_BLOCK_FONTS') {
+      blockWebFonts();
+      sendResponse({ success: true, fontsBlocked: true });
+    } else if (message.action === 'SKELIO_TOGGLE_3D') {
+      if (threeDStyleEl) {
+        restore3DWebsites();
+        sendResponse({ simplified: false });
+      } else {
+        simplify3DWebsites();
+        sendResponse({ simplified: true });
+      }
+    }
+    return false;
+  });
+
+  async function init() {
     console.log('[SkelIO] Content script initializing...');
 
-    if (shouldActivateSkelIO()) {
+    let enabled = true;
+    try {
+      const data = await chrome.storage.local.get(['skelioEnabled']);
+      if (data && data.skelioEnabled === false) {
+        enabled = false;
+      }
+    } catch (e) {}
+
+    if (enabled || shouldActivateSkelIO()) {
       activateSkelIO();
     }
 
-    console.log('[SkelIO] Content script initialized');
+    console.log('[SkelIO] Content script initialized, active:', isActive);
   }
 
   // Run immediately

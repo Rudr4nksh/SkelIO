@@ -19,9 +19,10 @@ chrome.runtime.onInstalled.addListener(() => {
     totalBlockedResources: 0,
     totalBandwidthSaved: 0,
     sessionsActivated: 0,
-    layoutShiftsPrevented: 0
+    layoutShiftsPrevented: 0,
+    skelioEnabled: true
   });
-  console.log('[SkelIO] Extension installed, stats initialized');
+  console.log('[SkelIO] Extension installed, stats and enabled initialized');
 });
 
 /**
@@ -124,6 +125,59 @@ async function hydrateURL(url, tabId) {
     return { success: true };
   } catch (err) {
     console.error(`[SkelIO] Failed to hydrate ${url} on tab ${tabId}:`, err);
+    return { success: false, error: err.message };
+  }
+/**
+ * ALLOW_FONTS: Lift font blocking on a tab so custom web fonts can load
+ */
+async function allowFonts(tabId) {
+  const tabData = activeTabs.get(tabId);
+  if (!tabData) return { success: true };
+
+  const fontAllowRuleId = generateAllowRuleId(tabId, tabData.allowRuleCounter++);
+  const allowRule = {
+    id: fontAllowRuleId,
+    priority: 20,
+    action: { type: 'allow' },
+    condition: {
+      tabIds: [tabId],
+      resourceTypes: ['font']
+    }
+  };
+
+  try {
+    await chrome.declarativeNetRequest.updateSessionRules({
+      addRules: [allowRule],
+      removeRuleIds: []
+    });
+    tabData.allowRuleIds.add(fontAllowRuleId);
+    tabData.fontAllowRuleId = fontAllowRuleId;
+    console.log(`[SkelIO] Allowed fonts on tab ${tabId}, rule ${fontAllowRuleId}`);
+    return { success: true };
+  } catch (err) {
+    console.error(`[SkelIO] Failed to allow fonts on tab ${tabId}:`, err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * BLOCK_FONTS: Re-enable font blocking by removing font allow rule
+ */
+async function blockFonts(tabId) {
+  const tabData = activeTabs.get(tabId);
+  if (!tabData || !tabData.fontAllowRuleId) return { success: true };
+
+  try {
+    await chrome.declarativeNetRequest.updateSessionRules({
+      addRules: [],
+      removeRuleIds: [tabData.fontAllowRuleId]
+    });
+    tabData.allowRuleIds.delete(tabData.fontAllowRuleId);
+    delete tabData.fontAllowRuleId;
+    console.log(`[SkelIO] Re-blocked fonts on tab ${tabId}`);
+    return { success: true };
+  } catch (err) {
+    console.error(`[SkelIO] Failed to re-block fonts on tab ${tabId}:`, err);
     return { success: false, error: err.message };
   }
 }
@@ -246,6 +300,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       deactivateSkelIO(tabId).then(sendResponse);
       return true;
 
+    case 'ALLOW_FONTS':
+      allowFonts(tabId).then(sendResponse);
+      return true;
+
+    case 'BLOCK_FONTS':
+      blockFonts(tabId).then(sendResponse);
+      return true;
+
     case 'INCREMENT_BLOCKED':
       incrementBlockedResources(message.count || 1).then(sendResponse);
       return true;
@@ -276,21 +338,27 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 });
 
 /**
- * Auto-activate on Wikipedia for testing
- * Trigger BEFORE page starts loading to catch all resources
+ * Auto-activate on all websites when enabled
  */
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  // Activate on ANY update if URL contains wikipedia.org and not already active
-  if (tab.url && tab.url.includes('wikipedia.org') && !activeTabs.has(tabId)) {
-    console.log('[SkelIO] Auto-activating for Wikipedia tab', tabId, 'status:', changeInfo.status);
+async function isSkelioEnabled() {
+  const data = await chrome.storage.local.get(['skelioEnabled']);
+  return data.skelioEnabled !== false; // Default to true on all websites
+}
+
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (!tab.url || (!tab.url.startsWith('http://') && !tab.url.startsWith('https://'))) return;
+  const enabled = await isSkelioEnabled();
+  if (enabled && !activeTabs.has(tabId)) {
+    console.log('[SkelIO] Auto-activating for tab', tabId, tab.url.substring(0, 50));
     activateSkelIO(tabId);
   }
 });
 
-// Also activate when tab is created (e.g., opening a new Wikipedia tab)
-chrome.tabs.onCreated.addListener((tab) => {
-  if (tab.url && tab.url.includes('wikipedia.org')) {
-    console.log('[SkelIO] Auto-activating for new Wikipedia tab', tab.id);
+chrome.tabs.onCreated.addListener(async (tab) => {
+  if (!tab.url || (!tab.url.startsWith('http://') && !tab.url.startsWith('https://'))) return;
+  const enabled = await isSkelioEnabled();
+  if (enabled && !activeTabs.has(tab.id)) {
+    console.log('[SkelIO] Auto-activating for new tab', tab.id);
     activateSkelIO(tab.id);
   }
 });

@@ -22,6 +22,53 @@
       margin-bottom: 16px;
       font-weight: 600;
     }
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .toggle-btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .toggle-btn.off {
+      background: #4CAF50;
+      color: #FFFFFF;
+    }
+    .toggle-btn.off:hover {
+      background: #45A049;
+    }
+    .toggle-btn.on {
+      background: #F44336;
+      color: #FFFFFF;
+    }
+    .toggle-btn.on:hover {
+      background: #D32F2F;
+    }
+    .font-btn {
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #2196F3;
+      color: #FFFFFF;
+      transition: background 0.2s;
+    }
+    .font-btn:hover {
+      background: #1976D2;
+    }
+    .font-btn:disabled {
+      background: #555;
+      cursor: default;
+    }
     .stats {
       display: flex;
       flex-direction: column;
@@ -47,6 +94,11 @@
 </head>
 <body>
   <h1>SkelIO</h1>
+  <div class="btn-row">
+    <button class="toggle-btn off" id="toggleBtn">Enable on this page</button>
+    <button class="font-btn" id="fontBtn" disabled>Load Fonts</button>
+  </div>
+  <button class="font-btn" id="threeDBtn" style="width: 100%; margin-bottom: 16px; background: #9C27B0;" disabled>Freeze Animations & 3D</button>
   <div class="stats">
     <div class="stat-item">
       <span class="stat-label">Layout Shifts Prevented</span>
