@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SkelIO - The web, locked in place.</title>
+  <link rel="icon" type="image/png" href="../extension/icons/icon32.png">
+  <!-- Google Fonts: Newsreader (Editorial Serif), Plus Jakarta Sans (Clean UI), Caveat (Handwritten annotations) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Outer Canvas Wrapper matching Figma Frame -->
+  <div class="site-container">
+
+    <!-- Top Navigation Bar -->
+    <header class="navbar">
+      <div class="nav-brand">
+        <span class="brand-text">SkelIO</span>
+      </div>
+
+      <nav class="nav-menu">
+        <a href="#home" class="nav-link active">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+          </svg>
+          Home
+        </a>
+        <a href="#how-it-works" class="nav-link">Function</a>
+        <a href="#contact" class="nav-link nav-dropdown">
+          Contact
+          <svg class="dropdown-arrow" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M7 10l5 5 5-5z"/>
+          </svg>
+        </a>
+      </nav>
+
+      <div class="nav-actions">
+        <button class="theme-toggle-btn" id="themeToggleBtn" aria-label="Toggle dark/light mode" title="Switch Theme">
+          <span class="theme-icon-wrap">
+            <svg class="theme-icon icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+            <svg class="theme-icon icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </span>
+        </button>
+        <button class="btn-login" id="loginBtn">Login</button>
+        <a href="#download" class="nav-signin">SIGN IN</a>
+      </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero-section" id="home">
+      <!-- Left Column: Copy & CTA -->
+      <div class="hero-content">
+        <h1 class="hero-title">
+          The web,<br>
+          locked<br>
+          in place.
+        </h1>
+
+        <h2 class="hero-subtitle">
+          SkelIO freezes web pages in place on slow networks.
+        </h2>
+
+        <p class="hero-description">
+          It blocks heavy images and holds their exact spots with blank outline frames, so text never jumps around and you can tap to load media only when you want it
+        </p>
+
+        <div class="hero-cta-wrap">
+          <a href="#download" class="btn-download" id="downloadBtn">DOWNLOAD</a>
+        </div>
+      </div>
+
+      <!-- Right Column: Exact Figma Browser & Annotation Illustration -->
+      <div class="hero-visual" id="heroVisualArea">
+        <!-- Organic Soft Blue Blob Background -->
+        <svg class="visual-cloud-blob" id="heroBlob" viewBox="0 0 540 440" fill="none" preserveAspectRatio="none">
+          <path d="M 80 120 C 60 50, 160 10, 260 20 C 360 30, 480 50, 500 130 C 520 210, 520 300, 460 370 C 400 430, 280 430, 180 410 C 90 390, 40 330, 30 250 C 20 180, 50 140, 80 120 Z" fill="#E1F0FA" fill-opacity="0.95"/>
+        </svg>
+
+        <!-- Top-Left: Slow Wi-Fi? No problem! + Wi-Fi Icon & Arrow -->
+        <div class="annotation-wifi-wrap" id="heroWifi">
+          <div class="wifi-text-group">
+            <span class="handwritten-text">Slow Wi-Fi?<br>No problem!</span>
+            <!-- Hand-drawn curved arrow pointing to browser top-left -->
+            <svg class="handwritten-arrow-wifi" viewBox="0 0 45 45" fill="none" stroke="#1E293B" stroke-width="1.8" stroke-linecap="round">
+              <path d="M 15 5 Q 32 15 28 36 M 22 30 L 28 37 L 34 31"/>
+            </svg>
+          </div>
+
+          <!-- Bold Wi-Fi Icon with Red X Badge -->
+          <div class="wifi-icon-figma">
+            <svg class="wifi-raw-svg" viewBox="0 0 40 32" fill="none" stroke="#1E293B" stroke-width="3" stroke-linecap="round">
+              <path d="M 4 8 C 14 -1, 26 -1, 36 8"/>
+              <path d="M 9 14 C 16 8, 24 8, 31 14"/>
+              <path d="M 14 20 C 17.5 16.5, 22.5 16.5, 26 20"/>
+              <circle cx="20" cy="27" r="2.5" fill="#1E293B"/>
+            </svg>
+            <div class="wifi-cross-badge">✕</div>
+          </div>
+        </div>
+
+        <!-- Top-Right: Images load on demand + Hand-drawn Arrow -->
+        <div class="annotation-ondemand-wrap" id="heroOndemand">
+          <span class="handwritten-text">Images<br>load on demand</span>
+          <svg class="handwritten-arrow-ondemand" viewBox="0 0 50 65" fill="none" stroke="#1E293B" stroke-width="1.8" stroke-linecap="round">
+            <path d="M 10 5 C 5 25, 5 45, 12 55 M 5 48 L 12 56 L 19 49"/>
+          </svg>
+        </div>
+
+        <!-- Browser Mockup Window Center -->
+        <div class="browser-window-wrap" id="heroBrowser">
+          <!-- Sketch Action Tick Lines (top right) -->
+          <div class="action-ticks-top">
+            <svg viewBox="0 0 30 30" fill="none" stroke="#334155" stroke-width="2.2" stroke-linecap="round">
+              <line x1="6" y1="24" x2="16" y2="10"/>
+              <line x1="14" y1="26" x2="24" y2="12"/>
+              <line x1="20" y1="22" x2="28" y2="18"/>
+            </svg>
+          </div>
+
+          <div class="browser-window">
+            <!-- Window Titlebar -->
+            <div class="browser-header">
+              <div class="window-dots">
+                <span class="dot dot-red"></span>
+                <span class="dot dot-yellow"></span>
+                <span class="dot dot-green"></span>
+              </div>
+              <div class="browser-address-bar">
+                <div class="address-pill-inner"></div>
+              </div>
+            </div>
+
+            <!-- Window Viewport matching Figma -->
+            <div class="browser-body">
+              <!-- Top bar inside page: Avatar icon + 2 skeleton lines -->
+              <div class="page-inner-header">
+                <div class="inner-avatar"></div>
+                <div class="inner-header-lines">
+                  <div class="inner-line wide"></div>
+                  <div class="inner-line narrow"></div>
+                </div>
+              </div>
+
+              <!-- Two-Column Page Content -->
+              <div class="skeleton-grid-figma">
+                <!-- Left Column: Big Mountain Placeholder + Lines + Pill Button -->
+                <div class="col-left">
+                  <div class="mountain-placeholder-box" id="heroPlaceholder1" title="Click to simulate loading image">
+                    <!-- Stylized Mountain & Sun Silhouette matching Figma -->
+                    <svg class="mountain-svg" viewBox="0 0 100 70" fill="none">
+                      <circle cx="65" cy="22" r="7" fill="#FFFFFF"/>
+                      <polygon points="10,65 38,28 62,65" fill="#FFFFFF"/>
+                      <polygon points="46,65 66,38 88,65" fill="#FFFFFF" fill-opacity="0.85"/>
+                    </svg>
+                  </div>
+                  <div class="skeleton-line-row">
+                    <div class="skeleton-line" style="width: 85%;"></div>
+                    <div class="skeleton-line" style="width: 60%;"></div>
+                  </div>
+                  <div class="skeleton-btn-pill"></div>
+                </div>
+
+                <!-- Right Column: Top Card + Lines + Video Box with Click to Load & Mouse Cursor -->
+                <div class="col-right">
+                  <div class="skeleton-card-bar"></div>
+                  <div class="skeleton-line-row">
+                    <div class="skeleton-line" style="width: 95%;"></div>
+                    <div class="skeleton-line" style="width: 80%;"></div>
+                    <div class="skeleton-line" style="width: 65%;"></div>
+                  </div>
+
+                  <!-- Video Box with Click-to-Load and Mouse Cursor -->
+                  <div class="video-placeholder-box" id="heroPlaceholder2" title="Click to simulate loading video">
+                    <div class="play-triangle">
+                      <svg viewBox="0 0 24 24" width="22" height="22" fill="#94A3B8">
+                        <path d="M8 5v14l11-7z"/>
+                      </svg>
+                    </div>
+
+                    <div class="click-to-load-badge">
+                      <span>Click to load</span>
+                    </div>
+
+                    <!-- Black Mouse Cursor Arrow pointing at badge -->
+                    <div class="mouse-cursor-figma">
+                      <svg viewBox="0 0 24 24" width="22" height="22" fill="#000000">
+                        <path d="M3 2l6.5 17 3-6.5 6.5-3L3 2z" stroke="#FFFFFF" stroke-width="1.6"/>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sketch Action Tick Lines (bottom left) -->
+          <div class="action-ticks-bottom">
+            <svg viewBox="0 0 30 30" fill="none" stroke="#334155" stroke-width="2.2" stroke-linecap="round">
+              <line x1="8" y1="20" x2="18" y2="6"/>
+              <line x1="16" y1="24" x2="26" y2="10"/>
+              <line x1="22" y1="22" x2="28" y2="16"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Vertically Stacked Feature Pills (Right of Browser Window) -->
+        <div class="figma-stacked-pills" id="heroPills">
+          <!-- Green Pill: No more page jumps -->
+          <div class="stacked-pill pill-green-figma">
+            <div class="pill-icon-box green">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="#16A34A">
+                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zm-5-7l-3 3.72L9 13l-3 4h12l-4-5z"/>
+              </svg>
+            </div>
+            <span class="pill-title">No more page jumps</span>
+          </div>
+
+          <!-- Blue Pill: Stable layout -->
+          <div class="stacked-pill pill-blue-figma">
+            <div class="pill-icon-box blue">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="#2563EB">
+                <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
+              </svg>
+            </div>
+            <span class="pill-title">Stable layout</span>
+          </div>
+
+          <!-- Purple Pill: Faster browsing -->
+          <div class="stacked-pill pill-purple-figma">
+            <div class="pill-icon-box purple">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="#9333EA">
+                <path d="M7 2v11h3v9l7-12h-4l4-8z"/>
+              </svg>
+            </div>
+            <span class="pill-title">Faster browsing</span>
+          </div>
+        </div>
+
+        <!-- Bottom-Right: Your internet. On your terms. with Hand-drawn Underline -->
+        <div class="annotation-terms-wrap" id="heroTerms">
+          <span class="handwritten-text">Your internet.<br>On your terms.</span>
+          <svg class="handwritten-underline" viewBox="0 0 100 18" fill="none" stroke="#1E293B" stroke-width="2" stroke-linecap="round">
+            <path d="M 5 8 Q 50 16 95 6"/>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 1: How It Works ALONE (Full 100vh Viewport Screen) -->
+    <section class="how-it-works-alone-section" id="how-it-works">
+      <!-- Background Parallax Ambient Waves & Particles -->
+      <div class="parallax-bg-layer" id="parallaxBg">
+        <div class="parallax-ambient-circle circle-1"></div>
+        <div class="parallax-ambient-circle circle-2"></div>
+      </div>
+
+      <!-- Exact Figma "How it works" Centerpiece alone on screen -->
+      <div class="how-it-works-figma-banner" id="parallaxBanner">
+        <!-- Left: Tilted Paper Plane Card with Radiating Ticks -->
+        <div class="plane-card-group">
+          <div class="radiating-ticks ticks-plane">
+            <svg viewBox="0 0 36 24" fill="none" stroke="#1E293B" stroke-width="2.2" stroke-linecap="round">
+              <line x1="6" y1="18" x2="2" y2="6"/>
+              <line x1="18" y1="20" x2="18" y2="4"/>
+              <line x1="30" y1="18" x2="34" y2="6"/>
+            </svg>
+          </div>
+          <div class="plane-white-card">
+            <svg class="plane-svg" viewBox="0 0 24 24" fill="#8B5CF6">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Center: Bold "How it" text -->
+        <h2 class="how-it-title">How it</h2>
+
+        <!-- Right: Tilted "works" Pill with Concentric Ripple Waves & Ticks -->
+        <div class="works-pill-group">
+          <!-- Concentric Purple Ripple Wave Circles -->
+          <div class="concentric-ripples">
+            <div class="ripple-ring ring-1"></div>
+            <div class="ripple-ring ring-2"></div>
+            <div class="ripple-ring ring-3"></div>
+          </div>
+
+          <!-- Radiating Ticks above works pill -->
+          <div class="radiating-ticks ticks-works">
+            <svg viewBox="0 0 36 24" fill="none" stroke="#1E293B" stroke-width="2.2" stroke-linecap="round">
+              <line x1="6" y1="20" x2="2" y2="8"/>
+              <line x1="18" y1="22" x2="18" y2="6"/>
+              <line x1="30" y1="20" x2="34" y2="8"/>
+            </svg>
+          </div>
+
+          <!-- The Tilted Purple Pill -->
+          <div class="works-purple-pill">
+            <span>works</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Subtle Scroll Down Indicator -->
+      <div class="scroll-hint">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round">
+          <path d="M7 13l5 5 5-5M7 6l5 5 5-5"/>
+        </svg>
+      </div>
+    </section>
+
+    <!-- Section 2: 3-Card Comparison Row with Crisp Vector Illustrations -->
+    <section class="comparison-section reveal-on-scroll" id="comparisonCardsSection">
+      <div class="comparison-grid">
+        <!-- Card 1: Frustrated User / Jumping Pages -->
+        <div class="comparison-card parallax-card" data-depth="0.15">
+          <div class="card-visual visual-frustrated">
+            <svg class="card-illustration" viewBox="0 0 200 155" fill="none">
+              <!-- Desk surface line -->
+              <path d="M12 116 H188" stroke="#CADBE0" stroke-width="2" stroke-linecap="round"/>
+              
+              <!-- Angled Papers on Left Desk -->
+              <path d="M22 112 L44 102 L58 108 L36 118 Z" fill="#FFFFFF" stroke="#CADBE0" stroke-width="1"/>
+              <path d="M28 110 L48 101 L54 104 L34 113 Z" fill="#F1F7F8"/>
+              <line x1="30" y1="109" x2="44" y2="103" stroke="#CBDDE0" stroke-width="1"/>
+              <line x1="34" y1="113" x2="48" y2="107" stroke="#CBDDE0" stroke-width="1"/>
+
+              <!-- Laptop Base -->
+              <path d="M46 106 L92 106 L108 119 L54 119 Z" fill="#BAC8D0"/>
+              <path d="M52 108 L90 108 L100 117 L58 117 Z" fill="#8E9FA9"/>
+              <!-- Trackpad -->
+              <rect x="73" y="113" width="14" height="4" rx="1" fill="#CAD4DA"/>
+
+              <!-- Laptop Screen -->
+              <g>
+                <!-- Screen Outer Bezel -->
+                <path d="M48 50 L100 44 L100 100 L48 105 Z" fill="#CBD5E1" stroke="#64748B" stroke-width="1.6" stroke-linejoin="round"/>
+                <!-- Screen Display Surface -->
+                <path d="M51 52 L97 47 L97 97 L51 101 Z" fill="#FFFFFF"/>
+                <!-- Teal Header Banner on Screen -->
+                <path d="M53 55 L95 50 L95 65 L53 69 Z" fill="#288390"/>
+                <!-- Red jumping wireframe box (Causes Frustration!) -->
+                <path class="jumping-red-wireframe" d="M54 70 L72 68 L72 79 L54 81 Z" fill="#FEE2E2" stroke="#EF4444" stroke-width="1.2" stroke-dasharray="3 1.5"/>
+                <!-- Jittery skeleton lines -->
+                <line x1="75" y1="72" x2="93" y2="70" stroke="#EF4444" stroke-width="2" stroke-linecap="round"/>
+                <line x1="75" y1="77" x2="89" y2="75" stroke="#CADDE0" stroke-width="2" stroke-linecap="round"/>
+                <line x1="54" y1="86" x2="93" y2="82" stroke="#CADDE0" stroke-width="2" stroke-linecap="round"/>
+                <line x1="54" y1="91" x2="82" y2="88" stroke="#E2EEF0" stroke-width="2" stroke-linecap="round"/>
+              </g>
+
+              <!-- Frustrated Seated Professional -->
+              <!-- Torso / Teal Shirt -->
+              <path d="M126 155 C124 135 130 116 140 106 C148 98 160 96 172 100 C180 103 184 114 186 132 L186 155 Z" fill="#4B8D97"/>
+              <path d="M152 100 C158 112 164 126 164 144" stroke="#3A7079" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+              <path d="M148 100 L156 108 L144 107 Z" fill="#3A7079"/>
+
+              <!-- Head: Hair, Face Profile & Beard -->
+              <!-- Head Silhouette -->
+              <ellipse cx="156" cy="68" rx="14" ry="16" fill="#E2A578"/>
+              <!-- Dark Groomed Hair -->
+              <path d="M146 54 C148 44 158 42 168 45 C177 48 181 58 180 68 C179 77 174 84 169 85 C165 85 162 79 162 74 C162 67 160 60 152 56 C149 54 147 54 146 54 Z" fill="#1E293B"/>
+              <path d="M154 48 Q162 46 171 52" stroke="#334155" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+              <!-- Ear -->
+              <ellipse cx="158" cy="70" rx="3" ry="4.5" fill="#D49466"/>
+              <!-- Beard along Jawline -->
+              <path d="M150 74 C148 79 151 84 155 86 C160 87 164 84 165 81 C161 81 157 80 155 76 C154 74 152 74 150 74 Z" fill="#1E293B"/>
+
+              <!-- Left Arm & Hand (Holding Forehead) -->
+              <!-- Upper Arm & Sleeve -->
+              <path d="M140 106 C134 110 128 118 126 128 C125 135 130 138 136 134 C139 128 141 120 142 112 Z" fill="#4B8D97"/>
+              <!-- Forearm leading straight up to forehead -->
+              <path d="M128 122 L138 84 L146 84 L138 122 Z" fill="#4B8D97"/>
+
+              <!-- Wristwatch -->
+              <rect x="135" y="80" width="9" height="4.5" rx="1.5" fill="#1E293B" transform="rotate(-10 135 80)"/>
+
+              <!-- Hand & Fingers pressed against forehead -->
+              <!-- Hand base -->
+              <path d="M138 78 C138 71 141 62 146 56 C149 52 153 53 153 58 C153 65 149 72 144 78 Z" fill="#E2A578" stroke="#884D2C" stroke-width="1.2"/>
+              <!-- Fingers clutching forehead -->
+              <path d="M146 56 C146 51 148 47 152 45 C154 45 155 48 153 52 C152 55 150 58 149 60 Z" fill="#D49466"/>
+              <path d="M149 55 C150 50 152 46 156 45 C158 45 158 48 156 52 C154 55 153 58 152 60 Z" fill="#D49466"/>
+            </svg>
+          </div>
+          <div class="card-caption">
+            Frustrated User /<br>Jumping Pages
+          </div>
+        </div>
+
+        <!-- Card 2: Clear Skeleton Wire Tablet (Highlighted Center) -->
+        <div class="comparison-card highlighted parallax-card" data-depth="0.25">
+          <div class="card-visual visual-tablet">
+            <svg class="card-illustration" viewBox="0 0 180 120" fill="none">
+              <!-- Tablet body -->
+              <rect x="18" y="14" width="144" height="92" rx="10" fill="#334155" stroke="#1E293B" stroke-width="2"/>
+              <rect x="24" y="20" width="132" height="80" rx="6" fill="#F8FAFC"/>
+              <!-- Tablet top header bar -->
+              <line x1="24" y1="30" x2="156" y2="30" stroke="#E2E8F0" stroke-width="1"/>
+              <circle cx="30" cy="25" r="1.5" fill="#EF4444"/>
+              <circle cx="35" cy="25" r="1.5" fill="#F59E0B"/>
+              <circle cx="40" cy="25" r="1.5" fill="#10B981"/>
+              <rect x="52" y="23" width="70" height="4" rx="2" fill="#E2E8F0"/>
+              <!-- Left Sidebar -->
+              <rect x="30" y="36" width="22" height="58" rx="3" fill="#E2E8F0"/>
+              <circle cx="41" cy="44" r="4" fill="#94A3B8"/>
+              <line x1="34" y1="54" x2="48" y2="54" stroke="#CBD5E1" stroke-width="2"/>
+              <line x1="34" y1="62" x2="46" y2="62" stroke="#CBD5E1" stroke-width="2"/>
+              <!-- 4 Skeleton Wireframe Grid Cards with circles -->
+              <rect x="58" y="36" width="34" height="22" rx="4" fill="#E2E8F0"/>
+              <circle cx="75" cy="47" r="4.5" fill="#CBD5E1"/>
+              <rect x="98" y="36" width="34" height="22" rx="4" fill="#E2E8F0"/>
+              <circle cx="115" cy="47" r="4.5" fill="#CBD5E1"/>
+              <!-- Lower 2 Wireframe Cards -->
+              <rect x="58" y="62" width="34" height="22" rx="4" fill="#E2E8F0"/>
+              <circle cx="75" cy="73" r="4.5" fill="#CBD5E1"/>
+              <rect x="98" y="62" width="34" height="22" rx="4" fill="#E2E8F0"/>
+              <circle cx="115" cy="73" r="4.5" fill="#CBD5E1"/>
+              <!-- Content text lines -->
+              <line x1="136" y1="40" x2="150" y2="40" stroke="#CBD5E1" stroke-width="2"/>
+              <line x1="136" y1="46" x2="148" y2="46" stroke="#CBD5E1" stroke-width="2"/>
+              <line x1="136" y1="66" x2="150" y2="66" stroke="#CBD5E1" stroke-width="2"/>
+              <line x1="136" y1="72" x2="146" y2="72" stroke="#CBD5E1" stroke-width="2"/>
+            </svg>
+          </div>
+          <div class="card-caption">
+            Clear Skeleton Wire Tablet
+          </div>
+        </div>
+
+        <!-- Card 3: Calm User / Instant Text Load -->
+        <div class="comparison-card parallax-card" data-depth="0.18">
+          <div class="card-visual visual-calm">
+            <svg class="card-illustration" viewBox="0 0 160 120" fill="none">
+              <!-- Window background panes -->
+              <rect x="20" y="15" width="40" height="75" fill="#F1F5F9" stroke="#E2E8F0" stroke-width="1.2"/>
+              <line x1="20" y1="50" x2="60" y2="50" stroke="#E2E8F0" stroke-width="1.2"/>
+              <!-- Calm person reading stably loaded content -->
+              <circle cx="86" cy="36" r="16" fill="#FED7AA"/>
+              <!-- Hair -->
+              <path d="M74 32 Q86 16 98 32 Q96 22 86 22 Q76 22 74 32 Z" fill="#1E293B"/>
+              <!-- Body / Teal Shirt -->
+              <path d="M68 80 C68 58 106 58 106 80 Z" fill="#0D9488"/>
+              <!-- Reading material held calmly -->
+              <path d="M70 60 L86 72 L102 60 L94 48 L86 52 L78 48 Z" fill="#FFFFFF" stroke="#64748B" stroke-width="1.4"/>
+              <line x1="74" y1="55" x2="82" y2="61" stroke="#CBD5E1" stroke-width="1.6"/>
+              <line x1="74" y1="60" x2="82" y2="66" stroke="#CBD5E1" stroke-width="1.6"/>
+              <line x1="88" y1="61" x2="98" y2="55" stroke="#CBD5E1" stroke-width="1.6"/>
+              <line x1="88" y1="66" x2="98" y2="60" stroke="#CBD5E1" stroke-width="1.6"/>
+            </svg>
+          </div>
+          <div class="card-caption">
+            Calm User / Instant Text<br>Load
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: Network Path & User Experience Flow -->
+    <section class="experience-section">
+      <div class="experience-grid">
+
+        <!-- Left Card: Network Path Funnel Diagram -->
+        <div class="network-path-card reveal-on-scroll" id="networkPathCard">
+          <div class="network-diagram-wrap">
+            <span class="diagram-label top">network path</span>
+            <svg class="funnel-svg" viewBox="0 0 160 220" fill="none">
+              <!-- Wide pipes -->
+              <path d="M 45 30 L 45 75 C 45 95 65 105 65 115 L 65 155 C 65 165 45 175 45 195" stroke="#0284C7" stroke-width="3" fill="none"/>
+              <path d="M 115 30 L 115 75 C 115 95 95 105 95 115 L 95 155 C 95 165 115 175 115 195" stroke="#0284C7" stroke-width="3" fill="none"/>
+
+              <!-- Outer technical guide marks -->
+              <path d="M 25 80 L 45 80" stroke="#94A3B8" stroke-width="2"/>
+              <path d="M 115 80 L 135 80" stroke="#94A3B8" stroke-width="2"/>
+              <path d="M 25 110 L 45 110" stroke="#94A3B8" stroke-width="2"/>
+              <path d="M 115 110 L 135 110" stroke="#94A3B8" stroke-width="2"/>
+
+              <!-- Pulsing Radar Ripple around valve -->
+              <circle cx="80" cy="115" r="14" stroke="#0284C7" stroke-width="1.5" fill="none" class="valve-radar"/>
+
+              <!-- Filter constriction valve in center -->
+              <rect x="62" y="98" width="36" height="34" rx="4" fill="#E0F2FE" stroke="#0284C7" stroke-width="1.5" class="valve-rect"/>
+              <circle cx="80" cy="115" r="4.5" fill="#0284C7" class="valve-dot"/>
+
+              <!-- Continuous Animated Flow Particles Down Stream -->
+              <circle cx="80" cy="40" r="3.5" fill="#38BDF8" class="flow-particle flow-p1"/>
+              <circle cx="80" cy="65" r="3.5" fill="#38BDF8" class="flow-particle flow-p2"/>
+              <circle cx="80" cy="140" r="3.5" fill="#0284C7" class="flow-particle flow-p3"/>
+              <circle cx="80" cy="170" r="3.5" fill="#0284C7" class="flow-particle flow-p4"/>
+            </svg>
+            <span class="diagram-label bottom">network path</span>
+          </div>
+        </div>
+
+        <!-- Right Card: User Experience & Interactive Phone Tapper -->
+        <div class="user-experience-card reveal-on-scroll" id="userExpCard">
+          <div class="experience-text-content">
+            <h3 class="experience-title">User Experience</h3>
+            <ol class="experience-list">
+              <li>clean skeleton views replace unloaded page +media</li>
+              <li>Instant text load</li>
+              <li>Click any media to load on demand</li>
+            </ol>
+          </div>
+
+          <!-- Smartphone Tap Mockup matching Figma -->
+          <div class="phone-mockup-wrap">
+            <div class="phone-body">
+              <div class="phone-camera-notch"></div>
+              <div class="phone-screen">
+                <!-- Teal Media Box with White Play Triangle -->
+                <div class="phone-media-box" id="phoneMediaCard" title="Click to simulate loading">
+                  <div class="phone-play-badge">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="#FFFFFF">
+                      <path d="M8 5v14l11-7z"/>
+                    </svg>
+                  </div>
+                </div>
+
+                <!-- Skeleton Lines -->
+                <div class="phone-lines">
+                  <div class="phone-line" style="width: 90%;"></div>
+                  <div class="phone-line" style="width: 65%;"></div>
+                </div>
+
+                <!-- Soft Mint CLICK TO LOAD Button -->
+                <div class="phone-btn-wrap">
+                  <button class="phone-btn-load" id="phoneLoadBtn" type="button">CLICK TO LOAD</button>
+                </div>
+
+                <!-- Hand Tapping the Button from Bottom Right Corner -->
+                <div class="tapping-hand" id="tappingHand">
+                  <svg viewBox="0 0 105 110" width="105" height="110" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <!-- 1. FULL SOLID UNDERLAYER (Guarantees zero background gaps) -->
+                    <polygon points="12,18 28,18 48,42 66,52 76,64 96,92 78,106 22,64" fill="#E2A578"/>
+
+                    <!-- 2. HAND BASE / PALM -->
+                    <path d="M 28 47 C 22 50 20 58 24 64 C 29 69 36 67 42 63 L 52 61 C 60 58 69 63 76 70 L 94 89 C 98 93 97 100 91 104 L 80 105 C 70 105 54 93 46 82 L 32 68 Z" fill="#E2A578" stroke="#884D2C" stroke-width="1.8" stroke-linejoin="round"/>
+
+                    <!-- Folded Pinky Finger -->
+                    <path d="M 60 56 C 65 52 71 54 73 59 C 74 63 70 68 64 70" fill="#CA8456" stroke="#884D2C" stroke-width="1.8" stroke-linejoin="round"/>
+                    <!-- Folded Ring Finger -->
+                    <path d="M 52 50 C 56 46 63 48 65 53 C 66 58 62 63 56 65" fill="#D38D5F" stroke="#884D2C" stroke-width="1.8" stroke-linejoin="round"/>
+                    <!-- Folded Middle Finger -->
+                    <path d="M 44 44 C 48 40 55 42 57 47 C 58 52 54 57 48 59" fill="#DB9567" stroke="#884D2C" stroke-width="1.8" stroke-linejoin="round"/>
+
+                    <!-- Thumb on the left resting comfortably -->
+                    <path d="M 28 47 C 22 50 20 58 24 64 C 29 69 38 68 44 64" fill="#E2A578" stroke="#884D2C" stroke-width="1.8" stroke-linejoin="round"/>
+
+                    <!-- Extended Index Finger pointing directly to the button -->
+                    <path d="M 18 14 C 14 14 12 17 13 22 L 22 47 L 38 44 L 27 20 C 25 15 22 14 18 14 Z" fill="#E2A578" stroke="#884D2C" stroke-width="1.8" stroke-linejoin="round"/>
+                    <!-- Fingertip highlight pad -->
+                    <ellipse cx="18" cy="18" rx="3.5" ry="2.5" fill="#F4CCA8"/>
+
+                    <!-- Knuckle Creases -->
+                    <path d="M 40 52 Q 46 54 52 51" stroke="#9E5E3A" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Contact Us Section -->
+    <section class="contact-section" id="contact">
+      <h2 class="contact-title">Contact Us</h2>
+      <div class="contact-box">
+        <p class="contact-desc">Have suggestions, feedback, or need support with SkelIO?</p>
+        <div class="contact-form-row">
+          <input type="email" class="contact-input" placeholder="Enter your email address" id="contactEmail" />
+          <button class="btn-contact-submit" id="contactSubmitBtn">Get in Touch</button>
+        </div>
+        <div class="contact-links">
+          <a href="https://github.com/Rudr4nksh/SkelIO" target="_blank" class="contact-link">GitHub Repository</a>
+          <span>•</span>
+          <a href="#home" class="contact-link">Back to Top</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Simple Footer -->
+    <footer class="footer">
+      <p>&copy; 2026 SkelIO · Zero-auth, high-performance web browsing.</p>
+    </footer>
+
+  </div> <!-- /site-container -->
+
+  <script src="script.js"></script>
+</body>
+</html>
