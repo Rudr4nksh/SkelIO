@@ -365,6 +365,8 @@ body {
 .wifi-raw-svg {
   width: 38px;
   height: 30px;
+  color: #1E293B;
+  transition: color 0.3s ease, stroke 0.3s ease;
 }
 
 .wifi-cross-badge {
@@ -1001,6 +1003,7 @@ body {
 
 .card-visual.visual-frustrated {
   background: #E8F1F3;
+  padding: 0;
 }
 
 .card-visual.visual-tablet {
@@ -1009,6 +1012,20 @@ body {
 
 .card-visual.visual-calm {
   background: #F8FAFC;
+  padding: 0;
+}
+
+.comparison-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: var(--radius-md);
+  transition: transform 0.25s ease;
+}
+
+.comparison-card:hover .comparison-card-img {
+  transform: scale(1.05);
 }
 
 .card-illustration {
@@ -1226,14 +1243,20 @@ body {
 /* Animated Tapping Hand (Index fingertip precisely on CLICK TO LOAD) */
 .tapping-hand {
   position: absolute;
-  bottom: -15px;
-  right: -20px;
-  width: 105px;
-  height: 110px;
+  bottom: -22px;
+  right: -24px;
+  width: 125px;
+  height: 130px;
   pointer-events: none;
   z-index: 20;
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.18));
   animation: handTap 2.4s infinite ease-in-out;
+}
+
+.tapping-hand-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.18));
 }
 
 @keyframes handTap {
@@ -1866,9 +1889,25 @@ body,
   stroke: #94A3B8;
 }
 
+[data-theme="dark"] .wifi-raw-svg {
+  color: #F8FAFC;
+  stroke: #F8FAFC;
+}
+
+[data-theme="dark"] .wifi-raw-svg circle {
+  fill: #F8FAFC;
+}
+
 [data-theme="dark"] .wifi-cross-badge {
   background: #2D1414;
   border-color: #EF4444;
+}
+
+[data-theme="dark"] .action-ticks-top svg,
+[data-theme="dark"] .action-ticks-bottom svg,
+[data-theme="dark"] .action-ticks-top line,
+[data-theme="dark"] .action-ticks-bottom line {
+  stroke: #94A3B8;
 }
 
 [data-theme="dark"] .browser-window-wrap {
