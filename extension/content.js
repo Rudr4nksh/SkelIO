@@ -1388,12 +1388,47 @@
         const data = await chrome.storage.local.get([
           'layoutShiftsPrevented',
           'totalBlockedResources',
-          'totalBandwidthSaved'
+          'totalBandwidthSaved',
+          'skelio_domain_stats'
         ]);
 
         const totalBlocked = Math.max(data.totalBlockedResources || 0, blockedResourcesCount, currentPageBlocked);
         const totalShifts = Math.max(data.layoutShiftsPrevented || 0, layoutShiftsPrevented, currentPageShifts);
         const totalBandwidth = Math.max(data.totalBandwidthSaved || 0, totalBlocked * bandwidthPerItem);
+
+        // Record real per-website tracking for SkelIO Dashboard
+        const domain = window.location.hostname.replace(/^www\./, '');
+        const domainStats = data.skelio_domain_stats || {};
+        if (domain && domain !== 'localhost' && !domain.includes('127.0.0.1')) {
+          const pageSaved = currentPageBlocked * bandwidthPerItem;
+          let pageTransferred = 350000;
+          try {
+            const entries = performance.getEntriesByType('resource');
+            if (entries && entries.length > 0) {
+              const sum = entries.reduce((acc, r) => acc + (r.transferSize || 0), 0);
+              if (sum > 0) pageTransferred = sum;
+            }
+          } catch (e) {}
+
+          const potential = pageTransferred + pageSaved;
+          domainStats[domain] = {
+            domain: domain,
+            archetype: currentArchetype || 'STANDARD',
+            blocked: Math.max(domainStats[domain]?.blocked || 0, currentPageBlocked),
+            shifts: Math.max(domainStats[domain]?.shifts || 0, currentPageShifts),
+            bandwidthSaved: Math.max(domainStats[domain]?.bandwidthSaved || 0, pageSaved),
+            potentialBytes: Math.max(domainStats[domain]?.potentialBytes || 0, potential),
+            actualBytes: pageTransferred,
+            lastUpdated: Date.now()
+          };
+        }
+
+        // Bridge to web page localStorage if on SkelIO website
+        try {
+          if (window.location.href.includes('dashboard.html') || window.location.href.includes('index.html')) {
+            window.localStorage.setItem('skelio_domain_stats', JSON.stringify(domainStats));
+          }
+        } catch (e) {}
 
         await chrome.storage.local.set({
           layoutShiftsPrevented: totalShifts,
@@ -1401,7 +1436,8 @@
           totalBandwidthSaved: totalBandwidth,
           pageBlocked: currentPageBlocked,
           pageShifts: currentPageShifts,
-          pageBandwidth: currentPageBlocked * bandwidthPerItem
+          pageBandwidth: currentPageBlocked * bandwidthPerItem,
+          skelio_domain_stats: domainStats
         });
       } catch (err) {}
     }, 40);
@@ -1409,6 +1445,119 @@
 
   function updateStats() {
     syncStats();
+  }
+
+  // ============================================================================
+  // SKELIO WEBSITE <-> EXTENSION SYNC BRIDGE
+  // Real-time synchronization of user profiles and domain statistics
+  // ============================================================================
+
+  function initSkelIOBridge() {
+    const href = (window.location.href || '').toLowerCase();
+    const isSkelIOWebsite = href.includes('dashboard.html') || href.includes('login.html') || href.includes('index.html') || href.includes('skelio');
+
+    if (!isSkelIOWebsite) return;
+
+    try {
+      chrome.storage.local.set({ skelio_website_url: window.location.href });
+    } catch (e) {}
+
+    // 1. Sync from Page LocalStorage -> Extension Chrome Storage
+    function pullFromPage() {
+      try {
+        const profileStr = window.localStorage.getItem('skelio_user_profile');
+        if (profileStr) {
+          const profile = JSON.parse(profileStr);
+          if (profile && profile.name) {
+            chrome.storage.local.set({
+              skelio_user_profile: profile,
+              skelio_website_url: window.location.href
+            });
+          }
+        }
+
+        const domainStatsStr = window.localStorage.getItem('skelio_domain_stats');
+        if (domainStatsStr) {
+          const stats = JSON.parse(domainStatsStr);
+          if (stats && Object.keys(stats).length > 0) {
+            chrome.storage.local.get(['skelio_domain_stats'], (res) => {
+              const merged = Object.assign({}, res?.skelio_domain_stats || {}, stats);
+              chrome.storage.local.set({ skelio_domain_stats: merged });
+            });
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 2. Sync from Extension Chrome Storage -> Page LocalStorage
+    function pushToPage() {
+      try {
+        chrome.storage.local.get(['skelio_user_profile', 'skelio_domain_stats'], (data) => {
+          if (!data) return;
+          if (data.skelio_user_profile && !window.localStorage.getItem('skelio_user_profile')) {
+            window.localStorage.setItem('skelio_user_profile', JSON.stringify(data.skelio_user_profile));
+            if (typeof window.loadUserProfile === 'function') window.loadUserProfile();
+          }
+          if (data.skelio_domain_stats) {
+            const localStats = JSON.parse(window.localStorage.getItem('skelio_domain_stats') || '{}');
+            const merged = Object.assign({}, localStats, data.skelio_domain_stats);
+            window.localStorage.setItem('skelio_domain_stats', JSON.stringify(merged));
+            if (typeof window.loadRealData === 'function') window.loadRealData();
+          }
+        });
+      } catch (e) {}
+    }
+
+    pullFromPage();
+    pushToPage();
+
+    // 3. Listen to live page broadcast events
+    window.addEventListener('message', (event) => {
+      if (!event.data) return;
+      if (event.data.type === 'SKELIO_PROFILE_UPDATED' && event.data.profile) {
+        try {
+          chrome.storage.local.set({
+            skelio_user_profile: event.data.profile,
+            skelio_website_url: window.location.href
+          });
+        } catch (e) {}
+      } else if (event.data.type === 'SKELIO_PROFILE_LOGOUT') {
+        try {
+          chrome.storage.local.remove(['skelio_user_profile']);
+        } catch (e) {}
+      }
+    });
+
+    document.addEventListener('SKELIO_PROFILE_UPDATED', (event) => {
+      if (event.detail) {
+        try {
+          chrome.storage.local.set({
+            skelio_user_profile: event.detail,
+            skelio_website_url: window.location.href
+          });
+        } catch (e) {}
+      }
+    });
+
+    // 4. Listen to extension storage updates to reflect in page immediately
+    try {
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local') {
+          if (changes.skelio_user_profile) {
+            if (changes.skelio_user_profile.newValue) {
+              window.localStorage.setItem('skelio_user_profile', JSON.stringify(changes.skelio_user_profile.newValue));
+            } else {
+              window.localStorage.removeItem('skelio_user_profile');
+            }
+            if (typeof window.loadUserProfile === 'function') window.loadUserProfile();
+          }
+          if (changes.skelio_domain_stats && changes.skelio_domain_stats.newValue) {
+            window.localStorage.setItem('skelio_domain_stats', JSON.stringify(changes.skelio_domain_stats.newValue));
+            if (typeof window.loadRealData === 'function') window.loadRealData();
+          }
+        }
+      });
+    } catch (e) {}
   }
 
   // ============================================================================
@@ -1620,6 +1769,9 @@
     } else {
       console.log(`[SkelIO] Standby: Speed ${currentSpeed} Mbps > threshold ${threshold} Mbps`);
     }
+
+    // Initialize website synchronization bridge
+    initSkelIOBridge();
 
     console.log('[SkelIO] Content script initialized, active:', isActive);
   }

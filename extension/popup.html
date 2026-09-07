@@ -173,6 +173,101 @@
       border-color: #CBD5E1;
     }
 
+    /* ─── Top User Profile Bar ─── */
+    .user-profile-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 6px 10px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    }
+
+    .user-profile-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .user-avatar-chip {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);
+      color: #FFFFFF;
+      font-size: 10px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      letter-spacing: -0.5px;
+      box-shadow: 0 2px 5px rgba(2, 132, 199, 0.25);
+    }
+
+    .user-avatar-chip.guest {
+      background: #94A3B8;
+      box-shadow: none;
+    }
+
+    .user-profile-meta {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .user-profile-name {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #0F172A;
+      line-height: 1.2;
+      max-width: 140px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .user-profile-badge {
+      font-size: 8.5px;
+      font-weight: 800;
+      color: #059669;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .user-profile-badge.guest {
+      color: #64748B;
+    }
+
+    .profile-action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      color: #0284C7;
+      text-decoration: none;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: #F0F9FF;
+      border: 1px solid #BAE6FD;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .profile-action-btn:hover {
+      background: #E0F2FE;
+      color: #0369A1;
+      transform: translateX(1px);
+    }
+
+    .profile-action-btn svg {
+      width: 9px;
+      height: 9px;
+      fill: currentColor;
+    }
+
     /* ─── Hero Site Control Card ─── */
     .hero-card {
       background: #FFFFFF;
@@ -702,6 +797,21 @@
 
   <!-- Floating Main Window Card with Rounded Corners -->
   <div class="popup-card">
+
+    <!-- Top User Profile Bar (Synced with Website) -->
+    <div class="user-profile-bar" id="userProfileBar">
+      <div class="user-profile-left">
+        <div class="user-avatar-chip guest" id="userAvatarChip">G</div>
+        <div class="user-profile-meta">
+          <div class="user-profile-name" id="userProfileName">Guest User</div>
+          <div class="user-profile-badge guest" id="userProfileBadge">NOT SYNCED</div>
+        </div>
+      </div>
+      <a href="#" class="profile-action-btn" id="openDashBtn" title="Sign In or Open Dashboard">
+        <span>Sign In</span>
+        <svg viewBox="0 0 24 24"><path d="M5 13h11.86l-5.43 5.43 1.42 1.42L21.14 12l-8.29-7.85-1.42 1.42L16.86 11H5v2z"/></svg>
+      </a>
+    </div>
 
     <!-- Top Header -->
     <div class="header">

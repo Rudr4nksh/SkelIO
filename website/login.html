@@ -1789,15 +1789,56 @@
         }, 3200);
       }
 
-      // 6. Form Handlers
+      // Helper: Save user profile & synchronize with extension
+      function saveUserProfile(name, email) {
+        const cleanName = name.trim() || email.split('@')[0];
+        const parts = cleanName.split(/\s+/);
+        let initials = parts[0][0].toUpperCase();
+        if (parts.length > 1) {
+          initials += parts[parts.length - 1][0].toUpperCase();
+        } else if (cleanName.length > 1) {
+          initials += cleanName[1].toUpperCase();
+        }
+        
+        const profile = {
+          name: cleanName,
+          email: email.trim(),
+          initials: initials,
+          plan: 'Pro',
+          loggedIn: true,
+          updatedAt: Date.now()
+        };
+        
+        localStorage.setItem('skelio_user_profile', JSON.stringify(profile));
+        
+        // Signal extension through multiple reliable bridge vectors
+        window.postMessage({ type: 'SKELIO_PROFILE_UPDATED', profile }, '*');
+        document.dispatchEvent(new CustomEvent('SKELIO_PROFILE_UPDATED', { detail: profile }));
+        document.documentElement.setAttribute('data-skelio-profile', JSON.stringify(profile));
+
+        // If extension context is directly accessible
+        try {
+          if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            chrome.storage.local.set({ skelio_user_profile: profile });
+          }
+        } catch (e) {}
+
+        return profile;
+      }
+
+      // 6. Form Handlers -> Redirect to Dashboard Page
       if (loginForm) {
         loginForm.addEventListener('submit', (e) => {
           e.preventDefault();
           const email = document.getElementById('loginEmail').value;
-          showToast(`Welcome back, ${email.split('@')[0]}! Logging in...`);
+          const userPart = email.split('@')[0];
+          const name = userPart.charAt(0).toUpperCase() + userPart.slice(1);
+          saveUserProfile(name, email);
+          
+          showToast(`Welcome back, ${name}! Opening dashboard...`);
           setTimeout(() => {
-            window.location.href = 'index.html';
-          }, 1800);
+            window.location.href = 'dashboard.html';
+          }, 1200);
         });
       }
 
@@ -1805,12 +1846,16 @@
         signupForm.addEventListener('submit', (e) => {
           e.preventDefault();
           const name = document.getElementById('signupName').value;
-          showToast(`Account created for ${name}! Redirecting...`);
+          const email = document.getElementById('signupEmail').value;
+          saveUserProfile(name, email);
+
+          showToast(`Account created for ${name}! Opening dashboard...`);
           setTimeout(() => {
-            window.location.href = 'index.html';
-          }, 1800);
+            window.location.href = 'dashboard.html';
+          }, 1200);
         });
       }
+
 
       if (forgotPassBtn) {
         forgotPassBtn.addEventListener('click', (e) => {

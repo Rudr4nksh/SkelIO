@@ -462,7 +462,163 @@ document.getElementById('speedPresets').addEventListener('click', async (e) => {
   await applySpeedThreshold(newThreshold);
 });
 
+// ─── User Profile Synchronization ───
+let cachedWebsiteBaseUrl = null;
+
+async function loadUserProfile() {
+  try {
+    let profile = null;
+
+    // 1. Check extension storage first
+    if (chrome && chrome.storage && chrome.storage.local) {
+      const data = await chrome.storage.local.get(['skelio_user_profile', 'skelio_website_url']);
+      profile = data.skelio_user_profile;
+      if (data.skelio_website_url) {
+        cachedWebsiteBaseUrl = data.skelio_website_url;
+      }
+    }
+
+    // 2. If not found in extension storage, actively scan open tabs
+    if (!profile && chrome && chrome.tabs && chrome.scripting) {
+      try {
+        const tabs = await chrome.tabs.query({});
+        for (const tab of tabs) {
+          if (tab.url && (tab.url.includes('website') || tab.url.includes('login.html') || tab.url.includes('dashboard.html') || tab.url.includes('index.html') || tab.url.includes('SkelIO'))) {
+            try {
+              const injection = await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: () => {
+                  return {
+                    profile: localStorage.getItem('skelio_user_profile'),
+                    stats: localStorage.getItem('skelio_domain_stats'),
+                    url: window.location.href
+                  };
+                }
+              });
+
+              if (injection && injection[0] && injection[0].result) {
+                const res = injection[0].result;
+                cachedWebsiteBaseUrl = res.url;
+                if (res.profile) {
+                  profile = JSON.parse(res.profile);
+                  await chrome.storage.local.set({
+                    skelio_user_profile: profile,
+                    skelio_website_url: res.url
+                  });
+                }
+                if (res.stats) {
+                  try {
+                    const stats = JSON.parse(res.stats);
+                    const cur = (await chrome.storage.local.get(['skelio_domain_stats']))?.skelio_domain_stats || {};
+                    await chrome.storage.local.set({ skelio_domain_stats: Object.assign({}, cur, stats) });
+                  } catch (e) {}
+                }
+                if (profile) break;
+              }
+            } catch (err) {}
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 3. Fallback to isolated extension localStorage
+    if (!profile) {
+      const stored = localStorage.getItem('skelio_user_profile');
+      if (stored) {
+        try { profile = JSON.parse(stored); } catch (e) {}
+      }
+    }
+
+    const avatarEl = document.getElementById('userAvatarChip');
+    const nameEl = document.getElementById('userProfileName');
+    const badgeEl = document.getElementById('userProfileBadge');
+    const dashBtn = document.getElementById('openDashBtn');
+
+    if (profile && profile.name) {
+      if (avatarEl) {
+        avatarEl.textContent = profile.initials || profile.name.slice(0, 2).toUpperCase();
+        avatarEl.classList.remove('guest');
+      }
+      if (nameEl) nameEl.textContent = profile.name;
+      if (badgeEl) {
+        badgeEl.textContent = (profile.plan || 'PRO') + ' MEMBER';
+        badgeEl.classList.remove('guest');
+      }
+      if (dashBtn) {
+        dashBtn.innerHTML = `<span>Dashboard</span><svg viewBox="0 0 24 24" style="width:9px;height:9px;fill:currentColor;"><path d="M5 13h11.86l-5.43 5.43 1.42 1.42L21.14 12l-8.29-7.85-1.42 1.42L16.86 11H5v2z"/></svg>`;
+        dashBtn.title = 'Open SkelIO Analytics Dashboard';
+      }
+    } else {
+      if (avatarEl) {
+        avatarEl.textContent = 'G';
+        avatarEl.classList.add('guest');
+      }
+      if (nameEl) nameEl.textContent = 'Guest User';
+      if (badgeEl) {
+        badgeEl.textContent = 'NOT SYNCED';
+        badgeEl.classList.add('guest');
+      }
+      if (dashBtn) {
+        dashBtn.innerHTML = `<span>Sign In</span><svg viewBox="0 0 24 24" style="width:9px;height:9px;fill:currentColor;"><path d="M5 13h11.86l-5.43 5.43 1.42 1.42L21.14 12l-8.29-7.85-1.42 1.42L16.86 11H5v2z"/></svg>`;
+        dashBtn.title = 'Sign In to SkelIO Account';
+      }
+    }
+  } catch (e) {
+    console.warn('Error loading user profile:', e);
+  }
+}
+
+const openDashBtn = document.getElementById('openDashBtn');
+if (openDashBtn) {
+  openDashBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    try {
+      const data = await chrome.storage.local.get(['skelio_user_profile', 'skelio_website_url']);
+      const isLoggedIn = !!(data.skelio_user_profile && data.skelio_user_profile.name);
+      const targetPage = isLoggedIn ? 'dashboard.html' : 'login.html';
+
+      // 1. Check if an existing tab has this page or any SkelIO website page
+      if (chrome && chrome.tabs) {
+        const tabs = await chrome.tabs.query({});
+        const existingTab = tabs.find(t => t.url && (t.url.includes(targetPage) || t.url.includes('website')));
+        if (existingTab) {
+          const targetUrl = existingTab.url.replace(/[^/]*$/, targetPage);
+          await chrome.tabs.update(existingTab.id, { url: targetUrl, active: true });
+          return;
+        }
+
+        // 2. If we cached the website URL, open targetPage
+        const baseUrl = data.skelio_website_url || cachedWebsiteBaseUrl;
+        if (baseUrl) {
+          const targetUrl = baseUrl.replace(/[^/]*$/, targetPage);
+          await chrome.tabs.create({ url: targetUrl });
+          return;
+        }
+      }
+    } catch (err) {}
+
+    window.open('../website/dashboard.html', '_blank');
+  });
+}
+
+// Listen to storage changes in real-time
+if (chrome && chrome.storage && chrome.storage.onChanged) {
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local') {
+      if (changes.skelio_user_profile) {
+        loadUserProfile();
+      }
+      if (changes.skelio_domain_stats) {
+        loadStats();
+      }
+    }
+  });
+}
+
 // Init
 checkStatus();
 loadStats();
+loadUserProfile();
 setInterval(loadStats, 2000);
+
+
