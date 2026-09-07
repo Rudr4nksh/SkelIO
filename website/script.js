@@ -189,19 +189,28 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 3. Login Button Modal
-  const loginBtn = document.getElementById('loginBtn');
-  if (loginBtn) {
-    loginBtn.addEventListener('click', () => {
-      showModal(
-        'Zero-Auth Experience',
-        `<p style="font-size: 14px; color: #475569; line-height: 1.6; margin-bottom: 16px;">
-          SkelIO is built with <strong>zero authentication required</strong>. No account, no passwords, no tracking — install the extension and immediately take control of your network!
-         </p>
-         <div style="display: flex; justify-content: flex-end;">
-           <button id="modalCloseBtn" style="padding: 9px 20px; border-radius: 9999px; background: #8B5CF6; color: #FFFFFF; font-size: 12px; font-weight: 700; border: none; cursor: pointer;">Awesome</button>
-         </div>`
-      );
+  // 3. Interactive Plane & Pill Micro-Interactions in How It Works
+  const planeInteractiveCard = document.getElementById('planeCard');
+  if (planeInteractiveCard) {
+    planeInteractiveCard.addEventListener('click', () => {
+      planeInteractiveCard.style.transition = 'transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)';
+      planeInteractiveCard.style.transform = 'rotate(350deg) scale(1.22) translateY(-14px)';
+      setTimeout(() => {
+        planeInteractiveCard.style.transition = '';
+        planeInteractiveCard.style.transform = '';
+      }, 850);
+    });
+  }
+
+  const worksInteractivePill = document.getElementById('worksPill');
+  if (worksInteractivePill) {
+    worksInteractivePill.addEventListener('click', () => {
+      worksInteractivePill.style.transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+      worksInteractivePill.style.transform = 'rotate(12deg) scale(1.18)';
+      setTimeout(() => {
+        worksInteractivePill.style.transition = '';
+        worksInteractivePill.style.transform = '';
+      }, 450);
     });
   }
 
@@ -306,10 +315,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         parallaxCards.forEach((card) => {
           const depth = parseFloat(card.getAttribute('data-depth')) || 0.15;
-          const isHighlighted = card.classList.contains('highlighted');
-          const baseY = isHighlighted ? -8 : 0;
-          const shiftY = baseY + (cardProgress * -32 * depth);
-          card.style.transform = `translateY(${shiftY}px)`;
+          const shiftY = cardProgress * -32 * depth;
+          card.style.translate = `0px ${shiftY}px`;
         });
       }
     }
@@ -367,12 +374,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
       parallaxCards.forEach((card) => {
         const depth = parseFloat(card.getAttribute('data-depth')) || 0.15;
-        const isHighlighted = card.classList.contains('highlighted');
-        const baseY = isHighlighted ? -8 : 0;
         const tiltX = mouseY * -10 * depth;
         const tiltY = mouseX * 10 * depth;
         const moveX = mouseX * 22 * depth;
-        const moveY = baseY + (mouseY * 18 * depth);
+        const moveY = mouseY * 18 * depth;
         card.style.transform = `perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) translate3d(${moveX}px, ${moveY}px, 0)`;
       });
     });
@@ -380,8 +385,7 @@ document.addEventListener('DOMContentLoaded', () => {
     comparisonCardsSection.addEventListener('mouseleave', () => {
       isMouseOverCards = false;
       parallaxCards.forEach((card) => {
-        const isHighlighted = card.classList.contains('highlighted');
-        card.style.transform = isHighlighted ? 'translateY(-8px)' : 'translateY(0px)';
+        card.style.transform = '';
       });
       if (!isTicking) {
         requestAnimationFrame(updateParallax);
@@ -399,8 +403,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
     }, {
-      rootMargin: '0px 0px -40px 0px',
-      threshold: 0.12
+      rootMargin: '0px 0px -50px 0px',
+      threshold: 0.08
     });
 
     revealElements.forEach((el) => revealObserver.observe(el));

@@ -1327,6 +1327,14 @@
         </span>
       </button>
 
+      <!-- Dashboard Link (only shown if already logged in) -->
+      <a href="dashboard.html" class="auth-back-link auth-only-dashboard" id="loginDashboardLink" style="display: none;">
+        <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:currentColor;">
+          <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
+        </svg>
+        Dashboard
+      </a>
+
       <!-- Back Link -->
       <a href="index.html" class="auth-back-link">
         <svg viewBox="0 0 24 24">
@@ -1837,8 +1845,12 @@
           
           showToast(`Welcome back, ${name}! Opening dashboard...`);
           setTimeout(() => {
-            window.location.href = 'dashboard.html';
-          }, 1200);
+            if (window.skelioNavigate) {
+              window.skelioNavigate('dashboard.html');
+            } else {
+              window.location.href = 'dashboard.html';
+            }
+          }, 1000);
         });
       }
 
@@ -1851,8 +1863,12 @@
 
           showToast(`Account created for ${name}! Opening dashboard...`);
           setTimeout(() => {
-            window.location.href = 'dashboard.html';
-          }, 1200);
+            if (window.skelioNavigate) {
+              window.skelioNavigate('dashboard.html');
+            } else {
+              window.location.href = 'dashboard.html';
+            }
+          }, 1000);
         });
       }
 
@@ -1871,5 +1887,6 @@
       }
     });
   </script>
+  <script src="transitions.js"></script>
 </body>
 </html>

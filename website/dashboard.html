@@ -21,7 +21,19 @@
       position: relative;
     }
 
-    /* Ambient Organic Cloud Blob matching Landing Page Hero */
+    /* Ambient Organic Cloud Blob with Gentle Floating Drift */
+    @keyframes floatCloud {
+      0% {
+        transform: translate(0, 0) rotate(0deg) scale(1);
+      }
+      50% {
+        transform: translate(-18px, 14px) rotate(1.5deg) scale(1.03);
+      }
+      100% {
+        transform: translate(14px, -10px) rotate(-1deg) scale(0.98);
+      }
+    }
+
     .dash-cloud-blob {
       position: absolute;
       top: 40px;
@@ -31,6 +43,8 @@
       pointer-events: none;
       z-index: 0;
       opacity: 0.85;
+      animation: floatCloud 22s ease-in-out infinite alternate;
+      will-change: transform;
     }
 
     [data-theme="dark"] .dash-cloud-blob path {
@@ -85,6 +99,36 @@
       text-transform: uppercase;
     }
 
+    /* Animations System */
+    @keyframes dashFadeSlideUp {
+      from {
+        opacity: 0;
+        transform: translateY(24px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes handwrittenBob {
+      0%, 100% {
+        transform: rotate(-3deg) translateY(0);
+      }
+      50% {
+        transform: rotate(-2deg) translateY(-5px);
+      }
+    }
+
+    @keyframes arrowPoint {
+      0%, 100% {
+        transform: translate(0, 0);
+      }
+      50% {
+        transform: translate(4px, 3px);
+      }
+    }
+
     /* Hero Editorial Title matching Landing Page */
     .dash-hero {
       position: relative;
@@ -95,6 +139,7 @@
       justify-content: space-between;
       flex-wrap: wrap;
       gap: 20px;
+      animation: dashFadeSlideUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
     }
 
     .dash-hero-title {
@@ -128,12 +173,15 @@
       color: var(--text-primary);
       line-height: 1.1;
       transform: rotate(-3deg);
+      animation: handwrittenBob 4.5s ease-in-out infinite;
+      display: inline-block;
     }
 
     .dash-arrow-svg {
       width: 42px;
       height: 42px;
       stroke: var(--text-primary);
+      animation: arrowPoint 2.6s ease-in-out infinite;
     }
 
     /* Metric Cards Grid matching Landing Page Card Style */
@@ -152,14 +200,67 @@
       border-radius: 22px;
       padding: 22px 24px;
       box-shadow: var(--shadow-sm);
-      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.28s ease;
       position: relative;
+      overflow: hidden;
+    }
+
+    /* Staggered Entrance for Cards */
+    .dash-metrics-grid .dash-card:nth-child(1) {
+      animation: dashFadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+    }
+    .dash-metrics-grid .dash-card:nth-child(2) {
+      animation: dashFadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both;
+    }
+    .dash-metrics-grid .dash-card:nth-child(3) {
+      animation: dashFadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.26s both;
+    }
+    .dash-metrics-grid .dash-card:nth-child(4) {
+      animation: dashFadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.34s both;
+    }
+
+    /* Subtle Glass Shimmer Beam on Hover */
+    .dash-card::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -120%;
+      width: 60%;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.45),
+        transparent
+      );
+      transform: skewX(-22deg);
+      pointer-events: none;
+      transition: none;
+    }
+
+    [data-theme="dark"] .dash-card::after {
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.08),
+        transparent
+      );
+    }
+
+    .dash-card:hover::after {
+      left: 180%;
+      transition: left 0.85s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     .dash-card:hover {
-      transform: translateY(-3px);
-      box-shadow: var(--shadow-md);
-      border-color: var(--border-focus);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 28px -6px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(15, 23, 42, 0.04);
+      border-color: rgba(15, 23, 42, 0.18);
+    }
+
+    [data-theme="dark"] .dash-card:hover {
+      border-color: rgba(56, 189, 248, 0.3);
+      box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.4);
     }
 
     .dash-card-label {
@@ -183,6 +284,11 @@
       align-items: center;
       justify-content: center;
       font-size: 14px;
+      transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .dash-card:hover .dash-card-icon {
+      transform: scale(1.22) rotate(8deg);
     }
 
     [data-theme="dark"] .dash-card-icon {
@@ -197,6 +303,7 @@
       line-height: 1;
       letter-spacing: -0.02em;
       margin-bottom: 6px;
+      transition: color 0.25s ease;
     }
 
     .dash-card-desc {
@@ -204,27 +311,8 @@
       color: var(--text-secondary);
     }
 
-    /* Core Comparison Graph Section */
-    .dash-chart-section {
-      position: relative;
-      z-index: 2;
-      background: var(--bg-card);
-      border: 1.5px solid var(--border-subtle);
-      border-radius: 26px;
-      padding: 32px;
-      box-shadow: var(--shadow-md);
-      margin-bottom: 36px;
-    }
-
-    .chart-section-header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-
+    /* Section Heading */
+    .dash-section-heading,
     .chart-heading {
       font-family: 'Newsreader', Georgia, serif;
       font-size: 1.85rem;
@@ -234,348 +322,18 @@
       letter-spacing: -0.01em;
     }
 
-    .chart-subtext {
-      font-size: 13.5px;
-      color: var(--text-secondary);
-      margin: 0;
+    @keyframes tableContainerFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: none;
+      }
     }
 
-    .chart-legend-row {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .legend-chip {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--text-secondary);
-    }
-
-    .legend-box {
-      width: 12px;
-      height: 12px;
-      border-radius: 3px;
-    }
-
-    .legend-box-saved {
-      background: #10B981;
-      box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
-    }
-
-    .legend-box-used {
-      background: #0F172A;
-    }
-
-    [data-theme="dark"] .legend-box-used {
-      background: #38BDF8;
-    }
-
-    .legend-box-potential {
-      background: #E2E8F0;
-    }
-
-    [data-theme="dark"] .legend-box-potential {
-      background: #334155;
-    }
-
-    /* ─── Visual Comparative Graph Plot ─── */
-    .graph-plot-container {
-      position: relative;
-      background: #FAF8F5;
-      border: 1.5px solid var(--border-subtle);
-      border-radius: 20px;
-      padding: 24px 20px 20px 20px;
-      margin-bottom: 24px;
-      box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.02);
-      overflow: hidden;
-    }
-
-    [data-theme="dark"] .graph-plot-container {
-      background: #0E1626;
-      border-color: #1E293B;
-    }
-
-    .graph-svg {
-      overflow: visible;
-      width: 100%;
-      height: auto;
-      display: block;
-    }
-
-    .bar-group {
-      cursor: pointer;
-      transition: transform 0.2s ease;
-    }
-
-    .bar-group .hover-zone {
-      transition: fill 0.2s;
-    }
-
-    .bar-group:hover .hover-zone {
-      fill: rgba(2, 132, 199, 0.06);
-    }
-
-    [data-theme="dark"] .bar-group:hover .hover-zone {
-      fill: rgba(56, 189, 248, 0.1);
-    }
-
-    .plot-bar {
-      transition: height 0.6s cubic-bezier(0.16, 1, 0.3, 1), y 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s;
-    }
-
-    .bar-group:hover .plot-bar {
-      opacity: 0.95;
-      filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.25));
-    }
-
-    .plot-bar-label {
-      transition: opacity 0.2s;
-    }
-
-    /* Floating Tooltip */
-    .graph-tooltip {
-      position: absolute;
-      display: none;
-      pointer-events: none;
-      z-index: 50;
-      background: rgba(15, 23, 42, 0.95);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      color: #FFFFFF;
-      padding: 12px 16px;
-      border-radius: 12px;
-      font-size: 12px;
-      box-shadow: 0 10px 25px -4px rgba(0, 0, 0, 0.3);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      line-height: 1.4;
-      white-space: nowrap;
-      transform: translate(-50%, -100%);
-      margin-top: -12px;
-      transition: opacity 0.15s;
-    }
-
-    .graph-tooltip-title {
-      font-weight: 800;
-      font-size: 13.5px;
-      color: #FFFFFF;
-      margin-bottom: 6px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .graph-tooltip-grid {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .graph-tooltip-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
-      color: #94A3B8;
-      font-size: 11.5px;
-    }
-
-    .graph-tooltip-row strong {
-      color: #F8FAFC;
-      font-variant-numeric: tabular-nums;
-    }
-
-    /* Graph Bars Container */
-    .chart-bars-list {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .chart-bar-item {
-      padding: 16px 20px;
-      background: #FAF8F5;
-      border: 1px solid var(--border-subtle);
-      border-radius: 16px;
-      transition: all 0.2s ease;
-    }
-
-    [data-theme="dark"] .chart-bar-item {
-      background: #111A2E;
-    }
-
-    .chart-bar-item:hover {
-      transform: translateX(4px);
-      border-color: #0F172A;
-    }
-
-    [data-theme="dark"] .chart-bar-item:hover {
-      border-color: #38BDF8;
-    }
-
-    .chart-bar-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 10px;
-    }
-
-    .chart-bar-domain {
-      font-size: 14.5px;
-      font-weight: 800;
-      color: var(--text-primary);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .chart-domain-badge {
-      width: 22px;
-      height: 22px;
-      border-radius: 6px;
-      background: #0F172A;
-      color: #FFFFFF;
-      font-size: 11px;
-      font-weight: 800;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    [data-theme="dark"] .chart-domain-badge {
-      background: #38BDF8;
-      color: #0F172A;
-    }
-
-    .chart-bar-stats {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      font-size: 13px;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .stat-saved-highlight {
-      font-weight: 800;
-      color: #059669;
-    }
-
-    .stat-potential-subtle {
-      font-weight: 600;
-      color: var(--text-muted);
-    }
-
-    .stat-percent-badge {
-      background: #ECFDF5;
-      color: #059669;
-      border: 1px solid #A7F3D0;
-      padding: 2px 8px;
-      border-radius: 6px;
-      font-size: 11px;
-      font-weight: 800;
-    }
-
-    /* Dual Track Bar */
-    .comparison-track {
-      width: 100%;
-      height: 18px;
-      background: #E2E8F0;
-      border-radius: 9px;
-      overflow: hidden;
-      display: flex;
-      position: relative;
-    }
-
-    [data-theme="dark"] .comparison-track {
-      background: #1E293B;
-    }
-
-    .track-saved {
-      height: 100%;
-      background: linear-gradient(90deg, #10B981 0%, #059669 100%);
-      border-radius: 9px 0 0 9px;
-      transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .track-used {
-      height: 100%;
-      background: #0F172A;
-      border-radius: 0 9px 9px 0;
-      transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    [data-theme="dark"] .track-used {
-      background: #38BDF8;
-    }
-
-    /* Empty State Card when no sites tracked yet */
-    .chart-empty-state {
-      padding: 48px 24px;
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: #FAF8F5;
-      border: 1.5px dashed var(--border-subtle);
-      border-radius: 18px;
-    }
-
-    [data-theme="dark"] .chart-empty-state {
-      background: #111A2E;
-    }
-
-    .empty-state-icon {
-      font-size: 38px;
-      margin-bottom: 12px;
-    }
-
-    .empty-state-title {
-      font-family: 'Newsreader', Georgia, serif;
-      font-size: 1.6rem;
-      font-weight: 600;
-      color: var(--text-primary);
-      margin: 0 0 8px 0;
-    }
-
-    .empty-state-desc {
-      font-size: 13.5px;
-      color: var(--text-secondary);
-      max-width: 460px;
-      margin: 0 0 20px 0;
-      line-height: 1.5;
-    }
-
-    .btn-test-record {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 22px;
-      background: #0F172A;
-      color: #FFFFFF;
-      border-radius: 100px;
-      font-size: 13px;
-      font-weight: 700;
-      border: none;
-      cursor: pointer;
-      box-shadow: var(--shadow-sm);
-      transition: all 0.2s;
-    }
-
-    .btn-test-record:hover {
-      transform: translateY(-1px);
-      background: #1E293B;
-      box-shadow: var(--shadow-md);
-    }
-
-    [data-theme="dark"] .btn-test-record {
-      background: #FFFFFF;
-      color: #0F172A;
-    }
-
-    /* Protection Ledger Table */
+    /* Protection Ledger Table Container */
     .dash-table-container {
       position: relative;
       z-index: 2;
@@ -584,41 +342,258 @@
       border-radius: 26px;
       padding: 28px 32px;
       box-shadow: var(--shadow-md);
+      animation: tableContainerFadeIn 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
+    }
+
+    /* Table Header Toolbar */
+    .table-header-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .table-header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .table-count-badge {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--text-secondary);
+      background: #F1F5F9;
+      padding: 3px 10px;
+      border-radius: 100px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    [data-theme="dark"] .table-count-badge {
+      background: #1E293B;
+      color: #94A3B8;
+      border-color: #334155;
+    }
+
+    .table-controls-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    /* Instant Search Box */
+    .table-search-box {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .table-search-box .search-icon {
+      position: absolute;
+      left: 12px;
+      width: 15px;
+      height: 15px;
+      stroke: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .table-search-box input {
+      padding: 8px 32px 8px 34px;
+      background: var(--bg-card);
+      border: 1.5px solid var(--border-subtle);
+      border-radius: 100px;
+      font-size: 12.5px;
+      font-family: inherit;
+      color: var(--text-primary);
+      outline: none;
+      width: 200px;
+      transition: all 0.2s ease;
+    }
+
+    .table-search-box input:focus {
+      width: 240px;
+      border-color: #0F172A;
+      box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
+    }
+
+    [data-theme="dark"] .table-search-box input:focus {
+      border-color: #38BDF8;
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+    }
+
+    .search-clear-btn {
+      position: absolute;
+      right: 10px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 16px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 2px;
+    }
+
+    .search-clear-btn:hover {
+      color: var(--text-primary);
+    }
+
+    /* Sort Select */
+    .table-sort-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sort-label {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .table-sort-select, .page-size-select {
+      padding: 7px 12px;
+      background: var(--bg-card);
+      border: 1.5px solid var(--border-subtle);
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: inherit;
+      color: var(--text-primary);
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .table-sort-select:hover, .page-size-select:hover {
+      border-color: var(--text-muted);
+    }
+
+    /* Scrollable Container with Sticky Header to prevent scrolling down excessively */
+    .table-scroll-wrap {
+      max-height: 480px;
+      overflow-y: auto;
       overflow-x: auto;
+      border-radius: 18px;
+      border: 1.5px solid var(--border-subtle);
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-subtle) transparent;
+      background: var(--bg-card);
+    }
+
+    .table-scroll-wrap::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .table-scroll-wrap::-webkit-scrollbar-thumb {
+      background: var(--border-subtle);
+      border-radius: 4px;
     }
 
     table.dash-table {
       width: 100%;
-      border-collapse: collapse;
+      border-collapse: separate;
+      border-spacing: 0;
       text-align: left;
     }
 
     table.dash-table th {
-      padding: 12px 14px;
+      position: sticky;
+      top: 0;
+      background: #FAF8F5;
+      z-index: 5;
+      padding: 13px 16px;
       font-size: 11.5px;
       font-weight: 700;
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.05em;
       border-bottom: 1.5px solid var(--border-subtle);
+      white-space: nowrap;
+    }
+
+    [data-theme="dark"] table.dash-table th {
+      background: #111A2E;
     }
 
     table.dash-table td {
-      padding: 14px;
+      padding: 14px 16px;
       font-size: 13.5px;
       color: var(--text-primary);
       border-bottom: 1px solid var(--border-subtle);
+      white-space: nowrap;
+    }
+
+    /* Table Row Transitions */
+    @keyframes rowFadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    table.dash-table tbody tr {
+      animation: rowFadeIn 0.25s ease-out both;
+      transition: background-color 0.15s ease;
+    }
+
+    table.dash-table tbody tr:hover {
+      background-color: rgba(15, 23, 42, 0.02);
+    }
+
+    [data-theme="dark"] table.dash-table tbody tr:hover {
+      background-color: rgba(255, 255, 255, 0.025);
     }
 
     table.dash-table tr:last-child td {
       border-bottom: none;
     }
 
+    /* Savings Progress Bar */
+    .savings-progress-fill {
+      height: 100%;
+      background: #10B981;
+      border-radius: 3px;
+      transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
     .table-domain-col {
       font-weight: 700;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
+    }
+
+    .table-domain-badge,
+    .chart-domain-badge {
+      width: 24px;
+      height: 24px;
+      border-radius: 7px;
+      background: #0F172A;
+      color: #FFFFFF;
+      font-size: 11px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: transform 0.2s ease;
+    }
+
+    table.dash-table tbody tr:hover .table-domain-badge {
+      transform: scale(1.12);
+    }
+
+    [data-theme="dark"] .table-domain-badge,
+    [data-theme="dark"] .chart-domain-badge {
+      background: #38BDF8;
+      color: #0F172A;
     }
 
     .archetype-pill {
@@ -631,11 +606,17 @@
       border: 1px solid var(--border-subtle);
     }
 
+    [data-theme="dark"] .archetype-pill {
+      background: #1E293B;
+      color: #94A3B8;
+      border-color: #334155;
+    }
+
     .sync-now-btn {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 5px 12px;
+      padding: 6px 14px;
       border-radius: 100px;
       background: var(--bg-card);
       border: 1px solid var(--border-subtle);
@@ -644,20 +625,157 @@
       font-weight: 700;
       cursor: pointer;
       box-shadow: var(--shadow-sm);
-      transition: all 0.2s;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     .sync-now-btn:hover {
       border-color: #10B981;
       transform: translateY(-1px);
+      box-shadow: 0 4px 12px -2px rgba(16, 185, 129, 0.2);
+    }
+
+    .sync-now-btn:active,
+    .page-nav-btn:active:not(:disabled),
+    .page-num-btn:active {
+      transform: scale(0.94);
+    }
+
+    /* Live Beacon Radar Pulse for Sync Dot */
+    @keyframes liveBeaconPulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+      }
+      70% {
+        box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+      }
     }
 
     .sync-dot {
-      width: 7px;
-      height: 7px;
+      width: 7.5px;
+      height: 7.5px;
       border-radius: 50%;
       background: #10B981;
-      box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+      animation: liveBeaconPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    /* Pagination Footer */
+    .table-pagination-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .pagination-info {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .pagination-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .page-size-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .page-size-label {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .pagination-nav {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .page-nav-btn {
+      padding: 5px 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: inherit;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .page-nav-btn:hover:not(:disabled) {
+      background: #F1F5F9;
+      border-color: #CBD5E1;
+      transform: translateY(-1px);
+    }
+
+    [data-theme="dark"] .page-nav-btn:hover:not(:disabled) {
+      background: #1E293B;
+      border-color: #334155;
+    }
+
+    .page-nav-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .page-numbers-wrap {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .page-num-btn {
+      min-width: 28px;
+      height: 28px;
+      padding: 0 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 700;
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .page-num-btn:hover {
+      background: #F1F5F9;
+      color: var(--text-primary);
+    }
+
+    [data-theme="dark"] .page-num-btn:hover {
+      background: #1E293B;
+      color: #FFFFFF;
+    }
+
+    .page-num-btn.active {
+      background: #0F172A;
+      color: #FFFFFF;
+      border-color: #0F172A;
+    }
+
+    [data-theme="dark"] .page-num-btn.active {
+      background: #38BDF8;
+      color: #0F172A;
+      border-color: #38BDF8;
     }
 
     /* Responsive */
@@ -674,8 +792,21 @@
       .dash-metrics-grid {
         grid-template-columns: 1fr;
       }
-      .dash-chart-section, .dash-table-container {
-        padding: 20px;
+      .dash-table-container {
+        padding: 18px;
+      }
+      .table-search-box input {
+        width: 100%;
+      }
+      .table-search-box input:focus {
+        width: 100%;
+      }
+      .table-controls-row {
+        width: 100%;
+      }
+      .table-pagination-footer {
+        flex-direction: column;
+        align-items: flex-start;
       }
     }
   </style>
@@ -694,7 +825,7 @@
       </div>
 
       <nav class="nav-menu">
-        <a href="index.html#home" class="nav-link">Home</a>
+        <a href="index.html" class="nav-link">Home</a>
         <a href="index.html#how-it-works" class="nav-link">Function</a>
         <a href="dashboard.html" class="nav-link active">Dashboard</a>
       </nav>
@@ -800,71 +931,86 @@
         </div>
       </div>
 
-      <!-- Core Comparative Graph: Data Saved vs Data Could Be Used -->
-      <section class="dash-chart-section">
-        <div class="chart-section-header">
-          <div>
-            <h2 class="chart-heading">Data Saved vs Data Could Be Used (Per Website)</h2>
-            <p class="chart-subtext">Real-time comparison of actual bandwidth consumed against total potential bytes saved.</p>
-          </div>
-
-          <div class="chart-legend-row">
-            <div class="legend-chip">
-              <span class="legend-box legend-box-saved"></span>
-              <span>Data Saved (MB)</span>
-            </div>
-            <div class="legend-chip">
-              <span class="legend-box legend-box-used"></span>
-              <span>Actual Data Used (MB)</span>
-            </div>
-            <div class="legend-chip">
-              <span class="legend-box legend-box-potential"></span>
-              <span>Total Could Be Used</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Visual Dual-Bar Column Graph Plot -->
-        <div class="graph-plot-container" id="graphPlotContainer">
-          <div class="plot-canvas-wrapper" id="plotCanvasWrapper"></div>
-          <div class="graph-tooltip" id="graphTooltip"></div>
-        </div>
-
-        <!-- Detailed Breakdown List Container -->
-        <div class="chart-bars-list" id="chartBarsContainer">
-          <!-- Populated by real tracked data or clean empty state -->
-        </div>
-      </section>
-
       <!-- Detailed Protection Ledger Table -->
       <section class="dash-table-container">
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;">
-          <h2 class="chart-heading" style="font-size:1.5rem; margin:0;">Tracked Websites Ledger</h2>
-          <div style="display:flex; align-items:center; gap:12px;">
+        <div class="table-header-toolbar">
+          <div class="table-header-left">
+            <h2 class="chart-heading" style="font-size:1.55rem; margin:0;">Tracked Websites Ledger</h2>
+            <span class="table-count-badge" id="tableCountBadge">0 websites</span>
+          </div>
+
+          <div class="table-controls-row">
+            <!-- Instant Search Box -->
+            <div class="table-search-box">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="ledgerSearchInput" placeholder="Search domain..." autocomplete="off" spellcheck="false" aria-label="Search websites">
+              <button class="search-clear-btn" id="searchClearBtn" aria-label="Clear search" title="Clear search" style="display:none;">&times;</button>
+            </div>
+
+            <!-- Sort By Dropdown -->
+            <div class="table-sort-wrap">
+              <label for="ledgerSortSelect" class="sort-label">Sort:</label>
+              <select id="ledgerSortSelect" class="table-sort-select">
+                <option value="saved-desc">Highest Savings</option>
+                <option value="potential-desc">Most Potential Data</option>
+                <option value="shifts-desc">Most Layout Shifts</option>
+                <option value="domain-asc">Domain (A–Z)</option>
+              </select>
+            </div>
+
+            <!-- Live Sync Button -->
             <button class="sync-now-btn" id="syncLedgerBtn" title="Sync live measurements from SkelIO extension">
               <span class="sync-dot"></span>
               <span id="syncBtnText">Live Sync</span>
             </button>
-            <span style="font-size:12px; font-weight:700; color:var(--text-muted);" id="ledgerSyncTime">Auto-Synced</span>
           </div>
         </div>
 
-        <table class="dash-table">
-          <thead>
-            <tr>
-              <th>Website Domain</th>
-              <th>Archetype Detected</th>
-              <th>Potential Data (Could Be Used)</th>
-              <th>Actual Transferred</th>
-              <th>Data Saved</th>
-              <th>Savings Efficiency</th>
-              <th>Layout Shifts Prevented</th>
-            </tr>
-          </thead>
-          <tbody id="dashTableBody">
-            <!-- Populated by JavaScript -->
-          </tbody>
-        </table>
+        <!-- Scrollable wrapper with sticky headers prevents excessive page scrolling -->
+        <div class="table-scroll-wrap">
+          <table class="dash-table">
+            <thead>
+              <tr>
+                <th>Website Domain</th>
+                <th>Archetype Detected</th>
+                <th>Potential Data (Could Be Used)</th>
+                <th>Actual Transferred</th>
+                <th>Data Saved</th>
+                <th>Savings Efficiency</th>
+                <th>Layout Shifts Prevented</th>
+              </tr>
+            </thead>
+            <tbody id="dashTableBody">
+              <!-- Populated by JavaScript -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div class="table-pagination-footer" id="tablePaginationFooter">
+          <div class="pagination-info" id="paginationInfo">
+            Showing 0 of 0 websites
+          </div>
+          <div class="pagination-actions">
+            <div class="page-size-wrap">
+              <label for="pageSizeSelect" class="page-size-label">Per page:</label>
+              <select id="pageSizeSelect" class="page-size-select">
+                <option value="8" selected>8</option>
+                <option value="15">15</option>
+                <option value="30">30</option>
+                <option value="all">All</option>
+              </select>
+            </div>
+            <div class="pagination-nav" id="paginationNav">
+              <button class="page-nav-btn" id="prevPageBtn" aria-label="Previous page" disabled>&larr; Prev</button>
+              <div class="page-numbers-wrap" id="pageNumbersWrap"></div>
+              <button class="page-nav-btn" id="nextPageBtn" aria-label="Next page" disabled>Next &rarr;</button>
+            </div>
+          </div>
+        </div>
       </section>
 
     </div>
@@ -908,7 +1054,7 @@
           document.documentElement.setAttribute('data-skelio-profile', JSON.stringify(profile));
           window.postMessage({ type: 'SKELIO_PROFILE_UPDATED', profile }, '*');
         } else {
-          // Guest mode: gracefully display guest identity so user can explore the dashboard & graph!
+          // Guest mode: gracefully display guest identity so user can explore the dashboard!
           if (avatarDot) avatarDot.textContent = 'G';
           if (userName) userName.textContent = 'Guest User';
           if (userPlan) userPlan.textContent = 'GUEST';
@@ -990,7 +1136,7 @@
           }
         } catch (e) {}
 
-        // If no sites recorded yet, initialize baseline websites so graph is plotted immediately
+        // If no sites recorded yet, initialize baseline websites so ledger is populated immediately
         if (Object.keys(domainStats).length === 0) {
           const baselineWebsites = {
             'c2c.sh': {
@@ -1056,6 +1202,7 @@
       const syncBtn = document.getElementById('syncLedgerBtn');
       if (syncBtn) {
         syncBtn.addEventListener('click', () => {
+          syncBtn.classList.add('syncing');
           window.postMessage({ type: 'SKELIO_REQUEST_SYNC' }, '*');
           document.dispatchEvent(new CustomEvent('SKELIO_REQUEST_SYNC'));
           loadRealData();
@@ -1063,7 +1210,10 @@
           const btnText = document.getElementById('syncBtnText');
           if (btnText) {
             btnText.textContent = 'Synced ✓';
-            setTimeout(() => { btnText.textContent = 'Live Sync'; }, 1800);
+            setTimeout(() => {
+              btnText.textContent = 'Live Sync';
+              syncBtn.classList.remove('syncing');
+            }, 1800);
           }
         });
       }
@@ -1092,219 +1242,247 @@
         return (bytes / (1024 * 1024)).toFixed(1);
       }
 
-      // ─── Visual SVG Comparative Dual-Bar Graph Plotter ───
-      function renderVisualPlot(domains) {
-        const wrapper = document.getElementById('plotCanvasWrapper');
-        const tooltip = document.getElementById('graphTooltip');
-        const plotContainer = document.getElementById('graphPlotContainer');
-        if (!wrapper || !plotContainer) return;
+      // State for search, sort, and pagination
+      let allDomainsCache = [];
+      let currentPage = 1;
+      let pageSize = 8;
+      let searchQuery = '';
+      let currentSort = 'saved-desc';
 
-        if (!domains || domains.length === 0) {
-          wrapper.innerHTML = '';
-          plotContainer.style.display = 'none';
-          return;
-        }
-        plotContainer.style.display = 'block';
+      function getSortedAndFilteredDomains() {
+        let list = allDomainsCache.slice();
 
-        // Calculate maximum scale for Y axis
-        const maxBytes = Math.max(...domains.map(d => Math.max(d.potentialBytes || 0, d.bandwidthSaved || 0)));
-        const maxMBVal = Math.max(1, maxBytes / (1024 * 1024));
-        const maxMB = Math.max(3, Math.ceil(maxMBVal * 1.25));
-
-        const svgWidth = 1000;
-        const svgHeight = 360;
-        const padLeft = 70;
-        const padRight = 35;
-        const padTop = 45;
-        const padBottom = 90;
-        const plotWidth = svgWidth - padLeft - padRight;
-        const plotHeight = svgHeight - padTop - padBottom;
-        const plotBaseline = padTop + plotHeight;
-
-        // Y-Axis Gridlines (4 steps)
-        const ySteps = 4;
-        let gridHtml = '';
-        for (let i = 0; i <= ySteps; i++) {
-          const valMB = ((maxMB / ySteps) * i).toFixed(1);
-          const yPos = plotBaseline - (plotHeight / ySteps) * i;
-          gridHtml += `
-            <g class="grid-row">
-              <line x1="${padLeft}" y1="${yPos}" x2="${svgWidth - padRight}" y2="${yPos}" stroke="currentColor" stroke-opacity="${i === 0 ? '0.35' : '0.12'}" stroke-dasharray="${i === 0 ? 'none' : '4 4'}" stroke-width="${i === 0 ? '1.5' : '1'}"/>
-              <text x="${padLeft - 12}" y="${yPos + 4}" text-anchor="end" font-size="11.5" font-family="'Plus Jakarta Sans', sans-serif" font-weight="700" fill="var(--text-muted)">${valMB} MB</text>
-            </g>
-          `;
+        // 1. Filter by search query
+        if (searchQuery.trim()) {
+          const q = searchQuery.trim().toLowerCase();
+          list = list.filter(d => (d.domain || '').toLowerCase().includes(q));
         }
 
-        // Plot Dual Bars for each website
-        const count = domains.length;
-        const colWidth = plotWidth / count;
-        let barsHtml = '';
-
-        domains.forEach((site, idx) => {
-          const saved = site.bandwidthSaved || 0;
-          const used = site.actualBytes || 350000;
-          const potential = site.potentialBytes || (saved + used);
-
-          const savedMB = saved / (1024 * 1024);
-          const potMB = potential / (1024 * 1024);
-          const usedMB = used / (1024 * 1024);
-          const percent = potential > 0 ? Math.round((saved / potential) * 100) : 0;
-
-          const savedBarH = Math.max(6, (savedMB / maxMB) * plotHeight);
-          const potBarH = Math.max(6, (potMB / maxMB) * plotHeight);
-
-          const groupX = padLeft + idx * colWidth;
-          const groupCenter = groupX + colWidth / 2;
-          const barWidth = Math.min(36, Math.max(20, colWidth * 0.28));
-          const gap = 8;
-
-          // Left bar: Data Saved (Emerald Green)
-          const savedX = groupCenter - barWidth - (gap / 2);
-          const savedY = plotBaseline - savedBarH;
-
-          // Right bar: Potential Could Be Used (Blue / Slate)
-          const potX = groupCenter + (gap / 2);
-          const potY = plotBaseline - potBarH;
-
-          barsHtml += `
-            <g class="bar-group" 
-               data-domain="${site.domain}" 
-               data-archetype="${site.archetype || 'STANDARD'}"
-               data-saved="${savedMB.toFixed(2)}" 
-               data-potential="${potMB.toFixed(2)}" 
-               data-used="${usedMB.toFixed(2)}"
-               data-percent="${percent}" 
-               data-shifts="${site.shifts || 0}">
-
-              <!-- Invisible hover zone covering entire column -->
-              <rect x="${groupX + 2}" y="${padTop - 15}" width="${colWidth - 4}" height="${plotHeight + 30}" rx="12" fill="transparent" class="hover-zone"/>
-
-              <!-- Potential / Could Be Used Bar (Right, Blue) -->
-              <rect x="${potX}" y="${potY}" width="${barWidth}" height="${potBarH}" rx="7" fill="url(#potBarGradient)" class="plot-bar plot-bar-potential" filter="url(#barShadow)"/>
-              <text x="${potX + barWidth / 2}" y="${potY - 8}" text-anchor="middle" font-size="11" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" fill="var(--text-secondary)" class="plot-bar-label">${potMB.toFixed(1)}M</text>
-
-              <!-- Data Saved Bar (Left, Emerald Green) -->
-              <rect x="${savedX}" y="${savedY}" width="${barWidth}" height="${savedBarH}" rx="7" fill="url(#savedBarGradient)" class="plot-bar plot-bar-saved" filter="url(#barShadow)"/>
-              <text x="${savedX + barWidth / 2}" y="${savedY - 8}" text-anchor="middle" font-size="11" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" fill="#059669" class="plot-bar-label">${savedMB.toFixed(1)}M</text>
-
-              <!-- X-Axis Domain Labels -->
-              <g transform="translate(${groupCenter}, ${plotBaseline + 18})">
-                <circle cx="0" cy="6" r="10" fill="var(--text-primary)"/>
-                <text x="0" y="10" text-anchor="middle" font-size="10" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" fill="var(--bg-canvas)">${site.domain[0].toUpperCase()}</text>
-                <text x="0" y="32" text-anchor="middle" font-size="12" font-family="'Plus Jakarta Sans', sans-serif" font-weight="700" fill="var(--text-primary)">${site.domain}</text>
-                <rect x="-26" y="40" width="52" height="17" rx="5" fill="#ECFDF5"/>
-                <text x="0" y="52" text-anchor="middle" font-size="10" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" fill="#059669">-${percent}%</text>
-              </g>
-            </g>
-          `;
+        // 2. Sort
+        list.sort((a, b) => {
+          if (currentSort === 'saved-desc') {
+            return (b.bandwidthSaved || 0) - (a.bandwidthSaved || 0);
+          } else if (currentSort === 'potential-desc') {
+            const potA = a.potentialBytes || ((a.bandwidthSaved || 0) + (a.actualBytes || 350000));
+            const potB = b.potentialBytes || ((b.bandwidthSaved || 0) + (b.actualBytes || 350000));
+            return potB - potA;
+          } else if (currentSort === 'shifts-desc') {
+            return (b.shifts || 0) - (a.shifts || 0);
+          } else if (currentSort === 'domain-asc') {
+            return (a.domain || '').localeCompare(b.domain || '');
+          }
+          return 0;
         });
 
-        wrapper.innerHTML = `
-          <svg viewBox="0 0 ${svgWidth} ${svgHeight}" class="graph-svg">
-            <defs>
-              <linearGradient id="savedBarGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#10B981"/>
-                <stop offset="100%" stop-color="#059669"/>
-              </linearGradient>
-              <linearGradient id="potBarGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#0284C7"/>
-                <stop offset="100%" stop-color="#0369A1"/>
-              </linearGradient>
-              <filter id="barShadow" x="-15%" y="-10%" width="130%" height="130%">
-                <feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-opacity="0.12"/>
-              </filter>
-            </defs>
-            ${gridHtml}
-            ${barsHtml}
-          </svg>
-        `;
-
-        // Interactive Tooltip on hover
-        const barGroups = wrapper.querySelectorAll('.bar-group');
-        barGroups.forEach(group => {
-          group.addEventListener('mouseenter', () => {
-            const domain = group.getAttribute('data-domain');
-            const archetype = group.getAttribute('data-archetype');
-            const saved = group.getAttribute('data-saved');
-            const potential = group.getAttribute('data-potential');
-            const used = group.getAttribute('data-used');
-            const percent = group.getAttribute('data-percent');
-            const shifts = group.getAttribute('data-shifts');
-
-            tooltip.innerHTML = `
-              <div class="graph-tooltip-title">
-                <span>&#x1F310; ${domain}</span>
-                <span style="font-size:10px; font-weight:700; background:#334155; color:#94A3B8; padding:2px 6px; border-radius:4px;">${archetype}</span>
-              </div>
-              <div class="graph-tooltip-grid">
-                <div class="graph-tooltip-row">
-                  <span>Data Saved:</span>
-                  <strong style="color:#10B981;">${saved} MB (${percent}%)</strong>
-                </div>
-                <div class="graph-tooltip-row">
-                  <span>Could Be Used:</span>
-                  <strong style="color:#38BDF8;">${potential} MB</strong>
-                </div>
-                <div class="graph-tooltip-row">
-                  <span>Actual Transferred:</span>
-                  <strong>${used} MB</strong>
-                </div>
-                <div class="graph-tooltip-row">
-                  <span>Layout Shifts Prevented:</span>
-                  <strong style="color:#FBBF24;">${shifts} jumps</strong>
-                </div>
-              </div>
-            `;
-            tooltip.style.display = 'block';
-          });
-
-          group.addEventListener('mousemove', (e) => {
-            const rect = wrapper.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            tooltip.style.left = `${x}px`;
-            tooltip.style.top = `${y}px`;
-          });
-
-          group.addEventListener('mouseleave', () => {
-            tooltip.style.display = 'none';
-          });
-        });
+        return list;
       }
 
-      function renderDashboard(domains, globalShifts, globalBandwidth) {
-        const barsContainer = document.getElementById('chartBarsContainer');
+      function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      }
+
+      function renderTableOnly() {
         const tableBody = document.getElementById('dashTableBody');
-        barsContainer.innerHTML = '';
-        tableBody.innerHTML = '';
+        const paginationInfo = document.getElementById('paginationInfo');
+        const pageNumbersWrap = document.getElementById('pageNumbersWrap');
+        const prevPageBtn = document.getElementById('prevPageBtn');
+        const nextPageBtn = document.getElementById('nextPageBtn');
+        const countBadge = document.getElementById('tableCountBadge');
 
-        // Plot the actual comparative dual-bar graph
-        renderVisualPlot(domains);
+        if (!tableBody) return;
 
-        if (!domains || domains.length === 0) {
-          document.getElementById('metricTotalSaved').innerHTML = `0.0 <span style="font-size:1.1rem; font-family:'Plus Jakarta Sans'; font-weight:700;">MB</span>`;
-          document.getElementById('metricTotalPotential').innerHTML = `0.0 <span style="font-size:1.1rem; font-family:'Plus Jakarta Sans'; font-weight:700;">MB</span>`;
-          document.getElementById('metricTotalShifts').textContent = '0';
-          document.getElementById('metricTotalSites').textContent = '0';
-          document.getElementById('metricSavedDesc').textContent = 'Browse websites to record';
+        if (countBadge) {
+          countBadge.textContent = `${allDomainsCache.length} website${allDomainsCache.length === 1 ? '' : 's'}`;
+        }
 
-          barsContainer.innerHTML = `
-            <div class="chart-empty-state">
-              <div class="empty-state-icon">&#x1F6E1;</div>
-              <h3 class="empty-state-title">No websites protected yet</h3>
-              <p class="empty-state-desc">
-                Browse any website with the SkelIO extension enabled to measure real bytes saved vs potential page payload in real time!
-              </p>
-            </div>
-          `;
-
+        if (allDomainsCache.length === 0) {
           tableBody.innerHTML = `
             <tr>
-              <td colspan="7" style="text-align:center; padding: 28px; color: var(--text-muted); font-size: 13px;">
+              <td colspan="7" style="text-align:center; padding: 36px 20px; color: var(--text-muted); font-size: 13.5px;">
                 No website records found. Browse the web with SkelIO enabled to populate live records.
               </td>
             </tr>
           `;
+          if (paginationInfo) paginationInfo.textContent = 'Showing 0 of 0 websites';
+          if (pageNumbersWrap) pageNumbersWrap.innerHTML = '';
+          if (prevPageBtn) prevPageBtn.disabled = true;
+          if (nextPageBtn) nextPageBtn.disabled = true;
+          return;
+        }
+
+        const filteredList = getSortedAndFilteredDomains();
+
+        if (filteredList.length === 0) {
+          tableBody.innerHTML = `
+            <tr>
+              <td colspan="7" style="text-align:center; padding: 36px 20px; color: var(--text-muted); font-size: 13.5px;">
+                No websites matching "<strong>${escapeHtml(searchQuery)}</strong>".
+              </td>
+            </tr>
+          `;
+          if (paginationInfo) paginationInfo.textContent = `0 results found`;
+          if (pageNumbersWrap) pageNumbersWrap.innerHTML = '';
+          if (prevPageBtn) prevPageBtn.disabled = true;
+          if (nextPageBtn) nextPageBtn.disabled = true;
+          return;
+        }
+
+        // Calculate pagination
+        const totalItems = filteredList.length;
+        const effectivePageSize = pageSize === 'all' ? totalItems : parseInt(pageSize, 10);
+        const totalPages = Math.max(1, Math.ceil(totalItems / effectivePageSize));
+
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        const startIndex = (currentPage - 1) * effectivePageSize;
+        const endIndex = Math.min(startIndex + effectivePageSize, totalItems);
+        const pageItems = filteredList.slice(startIndex, endIndex);
+
+        // Render rows
+        let rowsHtml = '';
+        pageItems.forEach(site => {
+          const saved = site.bandwidthSaved || 0;
+          const used = site.actualBytes || 350000;
+          const potential = site.potentialBytes || (saved + used);
+          const percent = potential > 0 ? Math.round((saved / potential) * 100) : 0;
+          const domainInitial = (site.domain || 'W')[0].toUpperCase();
+
+          rowsHtml += `
+            <tr>
+              <td>
+                <div class="table-domain-col">
+                  <span class="table-domain-badge">${domainInitial}</span>
+                  <span>${escapeHtml(site.domain)}</span>
+                </div>
+              </td>
+              <td><span class="archetype-pill">${escapeHtml(site.archetype || 'STANDARD')}</span></td>
+              <td style="font-weight:600; color:var(--text-muted);">${formatMB(potential)} MB</td>
+              <td style="font-weight:600; color:#0284C7;">${formatMB(used)} MB</td>
+              <td style="font-weight:800; color:#059669;">${formatMB(saved)} MB</td>
+              <td>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <div style="width:60px; height:6px; background:#E2E8F0; border-radius:3px; overflow:hidden;">
+                    <div class="savings-progress-fill" style="width:${percent}%;"></div>
+                  </div>
+                  <span style="font-weight:800; font-size:12px;">${percent}%</span>
+                </div>
+              </td>
+              <td style="font-weight:800;">${site.shifts || 0} jumps</td>
+            </tr>
+          `;
+        });
+        tableBody.innerHTML = rowsHtml;
+
+        // Update Pagination Footer
+        if (paginationInfo) {
+          if (pageSize === 'all') {
+            paginationInfo.textContent = `Showing all ${totalItems} websites`;
+          } else {
+            paginationInfo.textContent = `Showing ${startIndex + 1}–${endIndex} of ${totalItems} websites`;
+          }
+        }
+
+        if (prevPageBtn) prevPageBtn.disabled = (currentPage <= 1);
+        if (nextPageBtn) nextPageBtn.disabled = (currentPage >= totalPages);
+
+        // Generate Page Number Buttons
+        if (pageNumbersWrap) {
+          pageNumbersWrap.innerHTML = '';
+          if (totalPages > 1 && pageSize !== 'all') {
+            for (let p = 1; p <= totalPages; p++) {
+              if (totalPages > 7 && Math.abs(p - currentPage) > 2 && p !== 1 && p !== totalPages) {
+                if (p === 2 || p === totalPages - 1) {
+                  const ellipsis = document.createElement('span');
+                  ellipsis.style.cssText = 'color:var(--text-muted); padding:0 2px; font-size:11px;';
+                  ellipsis.textContent = '…';
+                  pageNumbersWrap.appendChild(ellipsis);
+                }
+                continue;
+              }
+              const pBtn = document.createElement('button');
+              pBtn.className = `page-num-btn ${p === currentPage ? 'active' : ''}`;
+              pBtn.textContent = p;
+              pBtn.setAttribute('aria-label', `Go to page ${p}`);
+              pBtn.addEventListener('click', () => {
+                currentPage = p;
+                renderTableOnly();
+              });
+              pageNumbersWrap.appendChild(pBtn);
+            }
+          }
+        }
+      }
+
+      // Smooth Numeric Counter Rolling Animation
+      const previousMetricValues = {
+        metricTotalSaved: 0,
+        metricTotalPotential: 0,
+        metricTotalShifts: 0,
+        metricTotalSites: 0
+      };
+
+      function animateMetricValue(elemId, targetVal, isMB) {
+        const elem = document.getElementById(elemId);
+        if (!elem) return;
+
+        const startVal = previousMetricValues[elemId] !== undefined ? previousMetricValues[elemId] : 0;
+        if (Math.abs(startVal - targetVal) < 0.01) {
+          if (isMB) {
+            elem.innerHTML = `${targetVal.toFixed(1)} <span style="font-size:1.1rem; font-family:'Plus Jakarta Sans'; font-weight:700;">MB</span>`;
+          } else {
+            elem.textContent = Math.round(targetVal).toLocaleString();
+          }
+          return;
+        }
+
+        previousMetricValues[elemId] = targetVal;
+        const duration = 850;
+        const startTime = performance.now();
+
+        function step(now) {
+          const elapsed = now - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          // Smooth easeOutCubic curve
+          const ease = 1 - Math.pow(1 - progress, 3);
+          const current = startVal + (targetVal - startVal) * ease;
+
+          if (isMB) {
+            elem.innerHTML = `${current.toFixed(1)} <span style="font-size:1.1rem; font-family:'Plus Jakarta Sans'; font-weight:700;">MB</span>`;
+          } else {
+            elem.textContent = Math.round(current).toLocaleString();
+          }
+
+          if (progress < 1) {
+            requestAnimationFrame(step);
+          } else {
+            if (isMB) {
+              elem.innerHTML = `${targetVal.toFixed(1)} <span style="font-size:1.1rem; font-family:'Plus Jakarta Sans'; font-weight:700;">MB</span>`;
+            } else {
+              elem.textContent = Math.round(targetVal).toLocaleString();
+            }
+          }
+        }
+
+        requestAnimationFrame(step);
+      }
+
+      let lastDataSignature = '';
+
+      function renderDashboard(domains, globalShifts, globalBandwidth) {
+        allDomainsCache = domains || [];
+
+        if (!domains || domains.length === 0) {
+          animateMetricValue('metricTotalSaved', 0, true);
+          animateMetricValue('metricTotalPotential', 0, true);
+          animateMetricValue('metricTotalShifts', 0, false);
+          animateMetricValue('metricTotalSites', 0, false);
+          document.getElementById('metricSavedDesc').textContent = 'Browse websites to record';
+          if (lastDataSignature !== 'empty') {
+            lastDataSignature = 'empty';
+            renderTableOnly();
+          }
           return;
         }
 
@@ -1315,7 +1493,7 @@
 
         domains.forEach(d => {
           totalSavedBytes += (d.bandwidthSaved || 0);
-          totalPotentialBytes += (d.potentialBytes || (d.bandwidthSaved + (d.actualBytes || 350000)));
+          totalPotentialBytes += (d.potentialBytes || ((d.bandwidthSaved || 0) + (d.actualBytes || 350000)));
           totalShifts += (d.shifts || 0);
         });
 
@@ -1323,72 +1501,86 @@
         if (globalBandwidth && globalBandwidth > totalSavedBytes) totalSavedBytes = globalBandwidth;
         if (globalShifts && globalShifts > totalShifts) totalShifts = globalShifts;
 
-        document.getElementById('metricTotalSaved').innerHTML = `${formatMB(totalSavedBytes)} <span style="font-size:1.1rem; font-family:'Plus Jakarta Sans'; font-weight:700;">MB</span>`;
-        document.getElementById('metricTotalPotential').innerHTML = `${formatMB(totalPotentialBytes)} <span style="font-size:1.1rem; font-family:'Plus Jakarta Sans'; font-weight:700;">MB</span>`;
-        document.getElementById('metricTotalShifts').textContent = totalShifts.toLocaleString();
-        document.getElementById('metricTotalSites').textContent = domains.length;
+        const savedMB = totalSavedBytes / (1024 * 1024);
+        const potentialMB = totalPotentialBytes / (1024 * 1024);
+
+        animateMetricValue('metricTotalSaved', savedMB, true);
+        animateMetricValue('metricTotalPotential', potentialMB, true);
+        animateMetricValue('metricTotalShifts', totalShifts, false);
+        animateMetricValue('metricTotalSites', domains.length, false);
 
         const overallPercent = totalPotentialBytes > 0 ? Math.round((totalSavedBytes / totalPotentialBytes) * 100) : 0;
         document.getElementById('metricSavedDesc').textContent = `${overallPercent}% net bandwidth reduction`;
 
-        // Render Breakdown Bars & Table
-        const maxPotential = Math.max(...domains.map(d => d.potentialBytes || (d.bandwidthSaved + 500000)));
+        // Only update table DOM if domains data actually changed!
+        const newSig = domains.map(d => `${d.domain}:${d.shifts}:${d.bandwidthSaved}:${d.actualBytes}`).join('|');
+        if (newSig !== lastDataSignature) {
+          lastDataSignature = newSig;
+          renderTableOnly();
+        }
+      }
 
-        domains.forEach(site => {
-          const saved = site.bandwidthSaved || 0;
-          const used = site.actualBytes || 350000;
-          const potential = site.potentialBytes || (saved + used);
-          const percent = potential > 0 ? Math.round((saved / potential) * 100) : 0;
+      // Hook up table search, sort, and pagination events
+      const searchInput = document.getElementById('ledgerSearchInput');
+      const searchClear = document.getElementById('searchClearBtn');
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+          searchQuery = e.target.value;
+          if (searchClear) searchClear.style.display = searchQuery ? 'block' : 'none';
+          currentPage = 1;
+          renderTableOnly();
+        });
+      }
+      if (searchClear) {
+        searchClear.addEventListener('click', () => {
+          if (searchInput) {
+            searchInput.value = '';
+            searchInput.focus();
+          }
+          searchQuery = '';
+          searchClear.style.display = 'none';
+          currentPage = 1;
+          renderTableOnly();
+        });
+      }
 
-          const savedWidth = (saved / maxPotential) * 100;
-          const usedWidth = (used / maxPotential) * 100;
+      const sortSelect = document.getElementById('ledgerSortSelect');
+      if (sortSelect) {
+        sortSelect.addEventListener('change', (e) => {
+          currentSort = e.target.value;
+          renderTableOnly();
+        });
+      }
 
-          // Bar item
-          const barItem = document.createElement('div');
-          barItem.className = 'chart-bar-item';
-          barItem.innerHTML = `
-            <div class="chart-bar-header">
-              <div class="chart-bar-domain">
-                <span class="chart-domain-badge">${site.domain[0].toUpperCase()}</span>
-                <span>${site.domain}</span>
-              </div>
-              <div class="chart-bar-stats">
-                <span class="stat-saved-highlight">&#x1F4E6; ${formatMB(saved)} MB Saved</span>
-                <span class="stat-potential-subtle">of ${formatMB(potential)} MB could be used</span>
-                <span class="stat-percent-badge">${percent}% SAVED</span>
-              </div>
-            </div>
-            <div class="comparison-track" title="${site.domain}: ${formatMB(saved)} MB saved out of ${formatMB(potential)} MB potential">
-              <div class="track-saved" style="width: ${savedWidth}%;"></div>
-              <div class="track-used" style="width: ${usedWidth}%;"></div>
-            </div>
-          `;
-          barsContainer.appendChild(barItem);
+      const pageSizeSel = document.getElementById('pageSizeSelect');
+      if (pageSizeSel) {
+        pageSizeSel.addEventListener('change', (e) => {
+          pageSize = e.target.value;
+          currentPage = 1;
+          renderTableOnly();
+        });
+      }
 
-          // Table row
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>
-              <div class="table-domain-col">
-                <span class="chart-domain-badge" style="width:20px;height:20px;font-size:10px;">${site.domain[0].toUpperCase()}</span>
-                <span>${site.domain}</span>
-              </div>
-            </td>
-            <td><span class="archetype-pill">${site.archetype || 'STANDARD'}</span></td>
-            <td style="font-weight:600; color:var(--text-muted);">${formatMB(potential)} MB</td>
-            <td style="font-weight:600; color:#0284C7;">${formatMB(used)} MB</td>
-            <td style="font-weight:800; color:#059669;">${formatMB(saved)} MB</td>
-            <td>
-              <div style="display:flex; align-items:center; gap:8px;">
-                <div style="width:60px; height:6px; background:#E2E8F0; border-radius:3px; overflow:hidden;">
-                  <div style="width:${percent}%; height:100%; background:#10B981;"></div>
-                </div>
-                <span style="font-weight:800; font-size:12px;">${percent}%</span>
-              </div>
-            </td>
-            <td style="font-weight:800;">${site.shifts || 0} jumps</td>
-          `;
-          tableBody.appendChild(tr);
+      const prevBtn = document.getElementById('prevPageBtn');
+      if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+          if (currentPage > 1) {
+            currentPage--;
+            renderTableOnly();
+          }
+        });
+      }
+
+      const nextBtn = document.getElementById('nextPageBtn');
+      if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+          const filtered = getSortedAndFilteredDomains();
+          const effectiveSize = pageSize === 'all' ? filtered.length : parseInt(pageSize, 10);
+          const maxP = Math.max(1, Math.ceil(filtered.length / effectiveSize));
+          if (currentPage < maxP) {
+            currentPage++;
+            renderTableOnly();
+          }
         });
       }
 
@@ -1419,5 +1611,6 @@
       loadRealData();
     });
   </script>
+  <script src="transitions.js"></script>
 </body>
 </html>

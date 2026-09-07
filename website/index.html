@@ -14,22 +14,25 @@
 <body>
 
   <!-- Outer Canvas Wrapper matching Figma Frame -->
-  <div class="site-container">
+  <div class="site-container" id="home">
 
     <!-- Top Navigation Bar -->
     <header class="navbar">
       <div class="nav-brand">
-        <span class="brand-text">SkelIO</span>
+        <a href="index.html" style="text-decoration:none; color:inherit; display:flex; align-items:center;">
+          <span class="brand-text">SkelIO</span>
+        </a>
       </div>
 
       <nav class="nav-menu">
-        <a href="#home" class="nav-link active">
+        <a href="index.html" class="nav-link active">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
           </svg>
           Home
         </a>
         <a href="#how-it-works" class="nav-link">Function</a>
+        <a href="dashboard.html" class="nav-link auth-only-dashboard" id="navDashboardLink" style="display: none;">Dashboard</a>
         <a href="#contact" class="nav-link nav-dropdown">
           Contact
           <svg class="dropdown-arrow" viewBox="0 0 24 24" fill="currentColor">
@@ -57,13 +60,23 @@
             </svg>
           </span>
         </button>
+
+        <!-- Logged In: Profile Chip & Sign Out -->
+        <a href="dashboard.html" class="nav-profile-chip" id="userProfileChip" style="display: none;" title="Open Dashboard">
+          <div class="user-avatar-dot" id="homeAvatarDot">AM</div>
+          <span class="user-name-text" id="homeUserName">Alex Morgan</span>
+          <span class="user-plan-tag" id="homeUserPlan">PRO</span>
+        </a>
+        <button class="btn-login" id="homeSignOutBtn" style="display: none; padding: 6px 14px; font-size: 13px;" title="Sign out">Sign Out</button>
+
+        <!-- Logged Out: Login & Sign In buttons -->
         <a href="login.html" class="btn-login" id="loginBtn">Login</a>
-        <a href="login.html#signup" class="nav-signin">SIGN IN</a>
+        <a href="login.html#signup" class="nav-signin" id="signupBtn">SIGN IN</a>
       </div>
     </header>
 
     <!-- Hero Section -->
-    <section class="hero-section" id="home">
+    <section class="hero-section" id="hero">
       <!-- Left Column: Copy & CTA -->
       <div class="hero-content">
         <h1 class="hero-title">
@@ -273,7 +286,7 @@
       <!-- Exact Figma "How it works" Centerpiece alone on screen -->
       <div class="how-it-works-figma-banner" id="parallaxBanner">
         <!-- Left: Tilted Paper Plane Card with Radiating Ticks -->
-        <div class="plane-card-group">
+        <div class="plane-card-group" id="planeCardGroup">
           <div class="radiating-ticks ticks-plane">
             <svg viewBox="0 0 36 24" fill="none" stroke="#1E293B" stroke-width="2.2" stroke-linecap="round">
               <line x1="6" y1="18" x2="2" y2="6"/>
@@ -281,7 +294,7 @@
               <line x1="30" y1="18" x2="34" y2="6"/>
             </svg>
           </div>
-          <div class="plane-white-card">
+          <div class="plane-white-card" id="planeCard" title="Click for paper plane flutter!">
             <svg class="plane-svg" viewBox="0 0 24 24" fill="#8B5CF6">
               <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
             </svg>
@@ -292,14 +305,7 @@
         <h2 class="how-it-title">How it</h2>
 
         <!-- Right: Tilted "works" Pill with Concentric Ripple Waves & Ticks -->
-        <div class="works-pill-group">
-          <!-- Concentric Purple Ripple Wave Circles -->
-          <div class="concentric-ripples">
-            <div class="ripple-ring ring-1"></div>
-            <div class="ripple-ring ring-2"></div>
-            <div class="ripple-ring ring-3"></div>
-          </div>
-
+        <div class="works-pill-group" id="worksPillGroup">
           <!-- Radiating Ticks above works pill -->
           <div class="radiating-ticks ticks-works">
             <svg viewBox="0 0 36 24" fill="none" stroke="#1E293B" stroke-width="2.2" stroke-linecap="round">
@@ -310,7 +316,7 @@
           </div>
 
           <!-- The Tilted Purple Pill -->
-          <div class="works-purple-pill">
+          <div class="works-purple-pill" id="worksPill" title="Click for pulse wave burst!">
             <span>works</span>
           </div>
         </div>
@@ -390,7 +396,7 @@
     </section>
 
     <!-- Section 3: Network Path & User Experience Flow -->
-    <section class="experience-section">
+    <section class="experience-section reveal-on-scroll" id="experienceSection">
       <div class="experience-grid">
 
         <!-- Left Card: Network Path Funnel Diagram -->
@@ -498,5 +504,6 @@
   </div> <!-- /site-container -->
 
   <script src="script.js"></script>
+  <script src="transitions.js"></script>
 </body>
 </html>
