@@ -4,240 +4,98 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SkelIO</title>
+  <!-- Google Fonts: Plus Jakarta Sans matching the SkelIO website -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       -webkit-font-smoothing: antialiased;
     }
 
-    html {
+    html, body {
       margin: 0;
       padding: 0;
-      background: #E2E8F0;
+      background-color: #FAF9F6;
+      background-image: 
+        linear-gradient(to right, rgba(15, 23, 42, 0.035) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(15, 23, 42, 0.035) 1px, transparent 1px);
+      background-size: 22px 22px;
+      color: #0F172A;
+      user-select: none;
+      box-sizing: border-box;
+      transition: background-color 0.25s ease, color 0.25s ease;
     }
 
     body {
-      margin: 0;
-      padding: 8px;
-      width: 376px;
-      background: #E2E8F0;
-      color: #0F172A;
-      user-select: none;
-      overflow: hidden;
-      box-sizing: border-box;
+      width: 375px;
+      padding: 13px;
     }
 
-    /* Adapt outer frame when browser is in dark mode (e.g. Opera GX default dark theme) */
-    @media (prefers-color-scheme: dark) {
-      html, body {
-        background: #0F172A;
-      }
-      .popup-card {
-        border-color: #334155 !important;
-        box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.45), 0 4px 12px -2px rgba(0, 0, 0, 0.25) !important;
-      }
-    }
-
-    /* ─── Floating Main Window Card with Rounded Corners ─── */
-    .popup-card {
-      background: #F8FAFC;
-      border: 1.5px solid #CBD5E1;
-      border-radius: 22px;
-      padding: 16px;
-      box-shadow: 0 12px 30px -4px rgba(15, 23, 42, 0.14), 0 4px 10px -2px rgba(15, 23, 42, 0.06);
-      overflow: hidden;
-      position: relative;
-    }
-
-    /* ─── Top Header ─── */
-    .header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 14px;
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-    }
-
-    .brand-logo {
-      width: 28px;
-      height: 28px;
-      background: #0F172A;
-      border-radius: 9px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.15);
-    }
-
-    .brand-logo svg {
-      width: 16px;
-      height: 16px;
-      fill: #FFFFFF;
-    }
-
-    .brand-title {
-      font-size: 16px;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      color: #0F172A;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-
-    .brand-title span {
-      font-size: 10px;
-      font-weight: 700;
-      color: #059669;
-      background: #ECFDF5;
-      padding: 2px 6px;
-      border-radius: 6px;
-      border: 1px solid #A7F3D0;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .header-actions {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .status-badge {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      background: #ECFDF5;
-      border: 1px solid #A7F3D0;
-      border-radius: 100px;
-      font-size: 11px;
-      font-weight: 600;
-      color: #059669;
-      letter-spacing: 0.02em;
-      transition: all 0.2s ease;
-    }
-
-    .status-badge.off {
-      background: #E2E8F0;
-      border-color: #CBD5E1;
-      color: #64748B;
-    }
-
-    .status-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: #10B981;
-      box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
-      animation: pulseDot 2s infinite ease-in-out;
-    }
-
-    .status-badge.off .status-dot {
-      background: #94A3B8;
-      box-shadow: none;
-      animation: none;
-    }
-
-    @keyframes pulseDot {
-      0%, 100% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.3); opacity: 0.7; }
-    }
-
-    .icon-btn {
-      background: #FFFFFF;
-      border: 1px solid #E2E8F0;
-      border-radius: 9px;
-      width: 28px;
-      height: 28px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #64748B;
-      cursor: pointer;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-      transition: all 0.2s;
-    }
-
-    .icon-btn:hover {
-      background: #F1F5F9;
-      color: #0F172A;
-      border-color: #CBD5E1;
-    }
-
-    /* ─── Top User Profile Bar ─── */
+    /* ─── Top User Profile Bar (Apple / Linear Minimalist) ─── */
     .user-profile-bar {
       display: flex;
       align-items: center;
       justify-content: space-between;
       background: #FFFFFF;
-      border: 1px solid #E2E8F0;
-      border-radius: 12px;
-      padding: 6px 10px;
-      margin-bottom: 12px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+      border: 1px solid rgba(15, 23, 42, 0.06);
+      border-radius: 18px;
+      padding: 8px 12px;
+      box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.03), 0 2px 4px rgba(15, 23, 42, 0.01);
+      transition: all 0.25s ease;
     }
 
     .user-profile-left {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
     }
 
     .user-avatar-chip {
-      width: 26px;
-      height: 26px;
+      width: 34px;
+      height: 34px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);
+      background: #0F172A;
       color: #FFFFFF;
-      font-size: 10px;
-      font-weight: 800;
+      font-size: 12.5px;
+      font-weight: 700;
       display: flex;
       align-items: center;
       justify-content: center;
-      letter-spacing: -0.5px;
-      box-shadow: 0 2px 5px rgba(2, 132, 199, 0.25);
+      letter-spacing: -0.2px;
+      flex-shrink: 0;
+      transition: all 0.25s ease;
     }
 
     .user-avatar-chip.guest {
-      background: #94A3B8;
-      box-shadow: none;
+      background: #64748B;
     }
 
     .user-profile-meta {
       display: flex;
       flex-direction: column;
+      gap: 1px;
     }
 
     .user-profile-name {
-      font-size: 11.5px;
+      font-size: 13.5px;
       font-weight: 700;
       color: #0F172A;
       line-height: 1.2;
-      max-width: 140px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      transition: color 0.25s ease;
     }
 
     .user-profile-badge {
-      font-size: 8.5px;
-      font-weight: 800;
-      color: #059669;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-    }
-
-    .user-profile-badge.guest {
+      font-size: 9.5px;
+      font-weight: 700;
       color: #64748B;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      transition: color 0.25s ease;
     }
 
     .user-profile-actions {
@@ -249,23 +107,24 @@
     .profile-action-btn {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
-      font-size: 10px;
-      font-weight: 700;
-      color: #0284C7;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #0F172A;
       text-decoration: none;
-      padding: 4px 8px;
-      border-radius: 6px;
-      background: #F0F9FF;
-      border: 1px solid #BAE6FD;
+      padding: 5px 12px;
+      border-radius: 9999px;
+      background: #FFFFFF;
+      border: 1px solid rgba(15, 23, 42, 0.08);
       cursor: pointer;
-      transition: all 0.2s;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+      transition: all 0.15s ease;
     }
 
     .profile-action-btn:hover {
-      background: #E0F2FE;
-      color: #0369A1;
-      transform: translateX(1px);
+      background: #F8FAFC;
+      border-color: rgba(15, 23, 42, 0.15);
+      transform: translateY(-0.5px);
     }
 
     .profile-action-btn svg {
@@ -278,22 +137,22 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 24px;
-      height: 24px;
+      width: 29px;
+      height: 29px;
       padding: 0;
-      border-radius: 6px;
-      background: #FEF2F2;
-      border: 1px solid #FECACA;
-      color: #DC2626;
+      border-radius: 9px;
+      background: #FFFFFF;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      color: #64748B;
       cursor: pointer;
-      transition: all 0.2s;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+      transition: all 0.15s ease;
     }
 
     .profile-logout-btn:hover {
       background: #FEE2E2;
+      color: #EF4444;
       border-color: #FCA5A5;
-      color: #B91C1C;
-      transform: scale(1.06);
     }
 
     .profile-logout-btn svg {
@@ -302,422 +161,474 @@
       fill: currentColor;
     }
 
-    /* ─── Hero Site Control Card ─── */
-    .hero-card {
-      background: #FFFFFF;
-      border: 1px solid #E2E8F0;
-      border-radius: 16px;
-      padding: 13px;
-      margin-bottom: 12px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.02);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .site-info {
+    /* ─── Floating Status, Theme & Server Control Row ─── */
+    .status-server-row {
       display: flex;
       align-items: center;
-      gap: 11px;
-      margin-bottom: 12px;
+      justify-content: space-between;
+      margin: 11px 2px 9px 2px;
     }
 
-    .site-avatar-wrap {
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
+    .status-group {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 11px;
+      background: #ECFDF5;
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: 9999px;
+      font-size: 10.5px;
+      font-weight: 700;
+      color: #059669;
+      letter-spacing: 0.04em;
+      transition: all 0.2s ease;
+    }
+
+    .status-badge.off {
       background: #F1F5F9;
-      border: 1px solid #E2E8F0;
+      border-color: rgba(15, 23, 42, 0.08);
+      color: #64748B;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #10B981;
+    }
+
+    .status-badge.off .status-dot {
+      background: #94A3B8;
+    }
+
+    .icon-btn {
+      background: #FFFFFF;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 50%;
+      width: 29px;
+      height: 29px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #64748B;
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+      transition: all 0.15s ease;
+    }
+
+    .icon-btn:hover {
+      background: #F8FAFC;
+      color: #0F172A;
+      border-color: rgba(15, 23, 42, 0.15);
+      transform: translateY(-0.5px);
+    }
+
+    .icon-btn svg {
+      width: 12px;
+      height: 12px;
+      fill: currentColor;
+    }
+
+    .theme-icon-wrap {
       display: flex;
       align-items: center;
       justify-content: center;
-      overflow: hidden;
-      flex-shrink: 0;
     }
 
-    .site-avatar-wrap img {
-      width: 20px;
-      height: 20px;
-      object-fit: contain;
+    .icon-sun {
+      display: none;
     }
 
-    .site-meta {
-      flex: 1;
-      min-width: 0;
+    .icon-moon {
+      display: block;
     }
 
-    .site-name {
-      font-size: 13.5px;
+    .global-server-pill {
+      background: #FFFFFF;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 9999px;
+      padding: 4px 11px;
+      font-size: 11px;
       font-weight: 600;
       color: #0F172A;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .site-status {
-      font-size: 11px;
-      color: #64748B;
-      margin-top: 2px;
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
+      cursor: default;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+      transition: all 0.25s ease;
     }
 
-    .site-status .shield-icon {
-      width: 12px;
-      height: 12px;
-      fill: #10B981;
+    .globe-icon {
+      width: 13px;
+      height: 13px;
+      fill: #0284C7;
     }
 
-    /* Master Toggle Button */
+    .down-arrow {
+      font-size: 9px;
+      color: #94A3B8;
+      margin-left: 1px;
+    }
+
+    /* ─── Master Primary Button (Linear / Apple Dark CTA) ─── */
     .master-btn {
       width: 100%;
-      padding: 10px;
-      background: #0F172A;
+      height: 44px;
+      background: linear-gradient(180deg, #1E293B 0%, #0F172A 100%);
       color: #FFFFFF;
-      border: none;
-      border-radius: 12px;
-      font-size: 13px;
-      font-weight: 600;
-      letter-spacing: 0.01em;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      font-size: 13.5px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      box-shadow: 0 3px 10px rgba(15, 23, 42, 0.15);
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 14px -1px rgba(15, 23, 42, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+      margin-bottom: 10px;
     }
 
     .master-btn:hover {
-      background: #1E293B;
       transform: translateY(-1px);
-      box-shadow: 0 5px 14px rgba(15, 23, 42, 0.2);
+      box-shadow: 0 6px 18px -1px rgba(15, 23, 42, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2);
     }
 
     .master-btn:active {
       transform: translateY(0);
     }
 
-    .master-btn.off {
-      background: #F1F5F9;
-      color: #64748B;
-      box-shadow: none;
-      border: 1px solid #E2E8F0;
-    }
-
-    .master-btn.off:hover {
-      background: #E2E8F0;
-      color: #0F172A;
-    }
-
-    /* ─── Speed Auto-Toggle Card ─── */
-    .speed-card {
-      background: #FFFFFF;
-      border: 1px solid #E2E8F0;
-      border-radius: 14px;
-      padding: 11px 12px;
-      margin-bottom: 12px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
-    }
-
-    .speed-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 9px;
-    }
-
-    .speed-title-wrap {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .speed-icon-box {
-      width: 26px;
-      height: 26px;
-      border-radius: 8px;
-      background: #FEF3C7;
-      border: 1px solid #FDE68A;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #D97706;
-      flex-shrink: 0;
-    }
-
-    .speed-icon-box svg {
+    .master-btn svg {
       width: 14px;
       height: 14px;
       fill: currentColor;
     }
 
-    .speed-meta {
+    .master-btn .sparkle-icon {
+      font-size: 13px;
+      line-height: 1;
+    }
+
+    /* ─── Cards Common ─── */
+    .card {
+      background: #FFFFFF;
+      border: 1px solid rgba(15, 23, 42, 0.06);
+      border-radius: 18px;
+      padding: 13px 15px;
+      margin-bottom: 10px;
+      box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.03), 0 2px 4px rgba(15, 23, 42, 0.01);
+      transition: all 0.25s ease;
+    }
+
+    /* ─── Speed Auto-Toggle Card ─── */
+    .speed-header {
       display: flex;
-      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 11px;
+    }
+
+    .speed-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .soft-circle-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #F1F5F9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #0F172A;
+      flex-shrink: 0;
+      transition: all 0.25s ease;
+    }
+
+    .soft-circle-icon svg {
+      width: 14px;
+      height: 14px;
+      fill: currentColor;
     }
 
     .speed-title {
-      font-size: 11.5px;
+      font-size: 13.5px;
       font-weight: 700;
       color: #0F172A;
-      letter-spacing: -0.01em;
+      line-height: 1.2;
+      transition: color 0.25s ease;
     }
 
     .speed-subtitle {
-      font-size: 10px;
+      font-size: 11px;
       color: #64748B;
       margin-top: 1px;
+      transition: color 0.25s ease;
     }
 
     .speed-subtitle strong {
       color: #0F172A;
-      font-weight: 600;
+      font-weight: 700;
+      transition: color 0.25s ease;
     }
 
-    .current-speed-pill {
-      display: flex;
+    .speed-pill-btn {
+      background: #F8FAFC;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 9999px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #0F172A;
+      display: inline-flex;
       align-items: center;
       gap: 5px;
-      padding: 3px 8px;
-      background: #F1F5F9;
-      border: 1px solid #CBD5E1;
-      border-radius: 100px;
-      font-size: 10.5px;
-      font-weight: 700;
-      color: #334155;
-      font-variant-numeric: tabular-nums;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s ease;
     }
 
-    .current-speed-pill:hover {
-      background: #E2E8F0;
-      color: #0F172A;
-      border-color: #94A3B8;
+    .speed-pill-btn:hover {
+      background: #F1F5F9;
+      border-color: rgba(15, 23, 42, 0.12);
     }
 
-    .current-speed-pill svg {
-      width: 10px;
-      height: 10px;
-      fill: currentColor;
-      color: #64748B;
-      transition: transform 0.3s;
-    }
-
-    .current-speed-pill.testing svg {
-      animation: spin 0.8s infinite linear;
-      color: #0284C7;
-    }
-
-    @keyframes spin {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
-
-    .speed-dot {
-      width: 6px;
-      height: 6px;
+    .speed-pill-btn .dot {
+      width: 5px;
+      height: 5px;
       border-radius: 50%;
-      background: #10B981;
-      box-shadow: 0 0 5px rgba(16, 185, 129, 0.6);
+      background: #0F172A;
+      transition: background 0.25s ease;
     }
 
+    /* Range Slider */
     .speed-slider-wrap {
-      margin: 8px 0 10px 0;
+      margin: 4px 0 10px 0;
     }
 
     .speed-slider {
       width: 100%;
-      height: 5px;
-      border-radius: 5px;
+      height: 4px;
+      border-radius: 4px;
       background: #E2E8F0;
       outline: none;
       -webkit-appearance: none;
       cursor: pointer;
+      transition: background 0.25s ease;
     }
 
     .speed-slider::-webkit-slider-thumb {
       -webkit-appearance: none;
-      width: 15px;
-      height: 15px;
+      width: 16px;
+      height: 16px;
       border-radius: 50%;
       background: #0F172A;
       border: 2px solid #FFFFFF;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.25);
       cursor: pointer;
-      transition: transform 0.15s, background-color 0.15s;
+      transition: transform 0.15s ease, background 0.25s ease;
     }
 
     .speed-slider::-webkit-slider-thumb:hover {
-      transform: scale(1.2);
-      background: #1E293B;
+      transform: scale(1.15);
     }
 
     .speed-slider-labels {
       display: flex;
       justify-content: space-between;
-      font-size: 9px;
-      color: #94A3B8;
+      font-size: 9.5px;
+      color: #64748B;
       font-weight: 600;
-      margin-top: 3px;
+      margin-top: 4px;
+      transition: color 0.25s ease;
     }
 
+    /* Segmented Preset Chips (Linear / macOS Pill Segment) */
     .speed-presets {
       display: flex;
-      gap: 6px;
+      background: #F1F5F9;
+      padding: 3px;
+      border-radius: 12px;
+      gap: 2px;
+      margin-top: 9px;
+      transition: background 0.25s ease;
     }
 
     .speed-chip {
       flex: 1;
       padding: 5px 0;
       border-radius: 9px;
-      border: 1px solid #E2E8F0;
-      background: #F8FAFC;
-      color: #475569;
+      border: none;
+      background: transparent;
+      color: #64748B;
       font-size: 10.5px;
       font-weight: 600;
       cursor: pointer;
       text-align: center;
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.15s ease;
     }
 
     .speed-chip:hover {
-      background: #F1F5F9;
       color: #0F172A;
-      border-color: #CBD5E1;
     }
 
     .speed-chip.active {
-      background: #0F172A;
-      color: #FFFFFF;
-      border-color: #0F172A;
-      box-shadow: 0 2px 7px rgba(15, 23, 42, 0.18);
+      background: #FFFFFF;
+      color: #0F172A;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08), 0 1px 1px rgba(15, 23, 42, 0.04);
+      font-weight: 700;
     }
 
-    /* ─── Feature Tiles ─── */
+    /* ─── Two Feature Cards Grid ─── */
     .feature-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 10px;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
 
     .feature-card {
       background: #FFFFFF;
-      border: 1px solid #E2E8F0;
-      border-radius: 14px;
-      padding: 11px;
+      border: 1px solid rgba(15, 23, 42, 0.06);
+      border-radius: 18px;
+      padding: 13px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      gap: 9px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
-      transition: border-color 0.2s, box-shadow 0.2s;
+      gap: 14px;
+      cursor: pointer;
+      box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.03), 0 2px 4px rgba(15, 23, 42, 0.01);
+      transition: all 0.15s ease;
     }
 
     .feature-card:hover {
-      border-color: #CBD5E1;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+      border-color: rgba(15, 23, 42, 0.12);
+      transform: translateY(-0.5px);
     }
 
     .feature-top {
       display: flex;
       align-items: center;
-      gap: 8px;
+      justify-content: space-between;
     }
 
-    .feature-icon-box {
-      width: 26px;
-      height: 26px;
-      border-radius: 8px;
+    .feature-icon-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #F1F5F9;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 12px;
+      color: #0F172A;
       font-weight: 700;
+      font-size: 13px;
+      transition: all 0.25s ease;
     }
 
-    .feature-icon-box.font-icon {
-      background: #F0F9FF;
-      color: #0284C7;
-      border: 1px solid #BAE6FD;
+    .feature-icon-circle svg {
+      width: 15px;
+      height: 15px;
+      fill: currentColor;
     }
 
-    .feature-icon-box.threed-icon {
-      background: #F5F3FF;
-      color: #7C3AED;
-      border: 1px solid #DDD6FE;
+    /* iOS-Style Toggle Switch (Smooth Apple Minimal) */
+    .ios-switch {
+      width: 38px;
+      height: 22px;
+      border-radius: 9999px;
+      background: #E2E8F0;
+      border: 1px solid transparent;
+      position: relative;
+      cursor: pointer;
+      padding: 2px;
+      display: inline-flex;
+      align-items: center;
+      transition: background-color 0.22s ease, border-color 0.22s ease;
+      pointer-events: none;
+    }
+
+    .ios-switch .switch-knob {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #FFFFFF;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.15);
+      transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .ios-switch.active {
+      background: #0F172A;
+    }
+
+    .ios-switch.active .switch-knob {
+      transform: translateX(16px);
+    }
+
+    .feature-bottom {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
     }
 
     .feature-label {
-      font-size: 11.5px;
-      font-weight: 600;
-      color: #1E293B;
+      font-size: 13px;
+      font-weight: 700;
+      color: #0F172A;
+      transition: color 0.25s ease;
     }
 
-    .feature-btn {
-      width: 100%;
-      padding: 6px 8px;
-      border-radius: 9px;
-      border: 1px solid #E2E8F0;
-      background: #F8FAFC;
-      color: #475569;
-      font-size: 11px;
-      font-weight: 600;
-      cursor: pointer;
+    .feature-sub {
+      font-size: 10px;
+      color: #64748B;
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 4px;
-      transition: all 0.2s;
+      gap: 2px;
+      transition: color 0.25s ease;
     }
 
-    .feature-btn:hover {
-      background: #F1F5F9;
-      color: #0F172A;
-    }
-
-    .feature-btn.active {
-      background: #E0F2FE;
-      border-color: #7DD3FC;
-      color: #0369A1;
-    }
-
-    .feature-btn.purple-active {
-      background: #EDE9FE;
-      border-color: #C4B5FD;
-      color: #6D28D9;
-    }
-
-    /* ─── Live Metrics Section ─── */
-    .metrics-container {
-      background: #FFFFFF;
-      border: 1px solid #E2E8F0;
-      border-radius: 14px;
-      padding: 11px 12px;
-      margin-bottom: 12px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
-    }
-
+    /* ─── Live Performance Impact Card ─── */
     .metrics-header {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      margin-bottom: 8px;
+      justify-content: space-between;
+      margin-bottom: 9px;
+    }
+
+    .metrics-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .metrics-title-wrap svg {
+      width: 13px;
+      height: 13px;
+      fill: #0F172A;
+      transition: fill 0.25s ease;
     }
 
     .metrics-title {
-      font-size: 10.5px;
-      font-weight: 700;
+      font-size: 10px;
+      font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.06em;
-      color: #64748B;
+      color: #0F172A;
+      transition: color 0.25s ease;
     }
 
-    .metrics-live {
-      font-size: 10px;
+    .metrics-live-dot {
+      font-size: 9.5px;
       font-weight: 700;
       color: #059669;
       display: flex;
@@ -725,7 +636,7 @@
       gap: 4px;
     }
 
-    .metrics-live::before {
+    .metrics-live-dot::before {
       content: '';
       width: 5px;
       height: 5px;
@@ -737,303 +648,515 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 7px 0;
-      border-bottom: 1px solid #F1F5F9;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.04);
+      transition: border-color 0.25s ease;
     }
 
     .metric-row:last-child {
       border-bottom: none;
-      padding-bottom: 1px;
+      padding-bottom: 0;
     }
 
     .metric-left {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 9px;
     }
 
     .metric-icon-wrap {
-      width: 22px;
-      height: 22px;
+      width: 25px;
+      height: 25px;
       border-radius: 7px;
       background: #F8FAFC;
-      border: 1px solid #E2E8F0;
       display: flex;
       align-items: center;
       justify-content: center;
+      transition: background 0.25s ease;
     }
 
     .metric-icon-wrap svg {
-      width: 12px;
-      height: 12px;
+      width: 13px;
+      height: 13px;
       fill: #64748B;
+      transition: fill 0.25s ease;
     }
 
     .metric-label {
-      font-size: 11.5px;
-      color: #475569;
+      font-size: 12px;
+      color: #334155;
       font-weight: 500;
+      transition: color 0.25s ease;
     }
 
-    .metric-val {
-      font-size: 12.5px;
+    .metric-val-wrap {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 13px;
       font-weight: 700;
       color: #0F172A;
       font-variant-numeric: tabular-nums;
+      transition: color 0.25s ease;
     }
 
-    .metric-val.green {
-      color: #059669;
+    .metric-val-wrap .arrow {
+      color: #94A3B8;
+      font-weight: 400;
+      font-size: 11px;
     }
 
-    .metric-val.cyan {
-      color: #0284C7;
+    /* Hidden compatibility elements for JS */
+    #blocked, #siteFavicon, #siteDomain, #siteProtectionText {
+      display: none;
     }
 
-    /* ─── Footer Action ─── */
+    /* ─── Minimalist Clean Footer ─── */
     .footer-actions {
       display: flex;
-      gap: 8px;
+      justify-content: space-between;
+      align-items: center;
+      padding: 3px 6px;
     }
 
-    .action-secondary-btn {
-      flex: 1;
-      padding: 7px 8px;
-      background: #FFFFFF;
-      border: 1px solid #E2E8F0;
-      border-radius: 10px;
-      color: #475569;
-      font-size: 11px;
-      font-weight: 600;
+    .action-link {
+      font-size: 10.5px;
+      color: #94A3B8;
+      text-decoration: none;
+      background: none;
+      border: none;
       cursor: pointer;
+      font-weight: 500;
+      transition: color 0.15s ease;
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 5px;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-      transition: all 0.2s;
+      gap: 4px;
     }
 
-    .action-secondary-btn:hover {
-      background: #F8FAFC;
+    .action-link:hover {
       color: #0F172A;
-      border-color: #CBD5E1;
     }
 
-    .action-secondary-btn svg {
-      width: 12px;
-      height: 12px;
+    .action-link svg {
+      width: 10px;
+      height: 10px;
       fill: currentColor;
+    }
+
+    /* ==========================================================================
+       Dark Mode (Synced with SkelIO Website Design System)
+       ========================================================================== */
+    [data-theme="dark"],
+    [data-theme="dark"] body {
+      background-color: #080C14;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+      color: #F8FAFC;
+    }
+
+    [data-theme="dark"] .user-profile-bar {
+      background: #131D2F;
+      border-color: #223049;
+      box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+    }
+
+    [data-theme="dark"] .user-avatar-chip {
+      background: #1E293B;
+      color: #FFFFFF;
+      border: 1px solid #2E405E;
+    }
+
+    [data-theme="dark"] .user-profile-name {
+      color: #F8FAFC;
+    }
+
+    [data-theme="dark"] .user-profile-badge {
+      color: #94A3B8;
+    }
+
+    [data-theme="dark"] .profile-action-btn {
+      background: #19253B;
+      border-color: #2F415E;
+      color: #F8FAFC;
+    }
+
+    [data-theme="dark"] .profile-action-btn:hover {
+      background: #233452;
+      border-color: #38BDF8;
+    }
+
+    [data-theme="dark"] .profile-logout-btn {
+      background: #19253B;
+      border-color: #2F415E;
+      color: #94A3B8;
+    }
+
+    [data-theme="dark"] .profile-logout-btn:hover {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #FCA5A5;
+    }
+
+    [data-theme="dark"] .status-badge.off {
+      background: #19253B;
+      border-color: #2F415E;
+      color: #94A3B8;
+    }
+
+    [data-theme="dark"] .icon-btn {
+      background: #131D2F;
+      border-color: #223049;
+      color: #94A3B8;
+    }
+
+    [data-theme="dark"] .icon-btn:hover {
+      background: #19253B;
+      color: #F8FAFC;
+      border-color: #38BDF8;
+    }
+
+    [data-theme="dark"] .global-server-pill {
+      background: #131D2F;
+      border-color: #223049;
+      color: #F8FAFC;
+    }
+
+    [data-theme="dark"] .master-btn {
+      background: linear-gradient(180deg, #253349 0%, #152033 100%);
+      border-color: rgba(255, 255, 255, 0.12);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    }
+
+    [data-theme="dark"] .master-btn:hover {
+      background: linear-gradient(180deg, #2E405E 0%, #1A273D 100%);
+    }
+
+    [data-theme="dark"] .card {
+      background: #131D2F;
+      border-color: #223049;
+      box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+    }
+
+    [data-theme="dark"] .soft-circle-icon,
+    [data-theme="dark"] .feature-icon-circle {
+      background: #19253B;
+      color: #38BDF8;
+    }
+
+    [data-theme="dark"] .speed-title,
+    [data-theme="dark"] .feature-label {
+      color: #F8FAFC;
+    }
+
+    [data-theme="dark"] .speed-subtitle,
+    [data-theme="dark"] .feature-sub,
+    [data-theme="dark"] .speed-slider-labels {
+      color: #94A3B8;
+    }
+
+    [data-theme="dark"] .speed-subtitle strong {
+      color: #F8FAFC;
+    }
+
+    [data-theme="dark"] .speed-pill-btn {
+      background: #19253B;
+      border-color: #2F415E;
+      color: #F8FAFC;
+    }
+
+    [data-theme="dark"] .speed-pill-btn .dot {
+      background: #38BDF8;
+    }
+
+    [data-theme="dark"] .speed-slider {
+      background: #223049;
+    }
+
+    [data-theme="dark"] .speed-slider::-webkit-slider-thumb {
+      background: #38BDF8;
+    }
+
+    [data-theme="dark"] .speed-presets {
+      background: #0E1626;
+    }
+
+    [data-theme="dark"] .speed-chip {
+      color: #94A3B8;
+    }
+
+    [data-theme="dark"] .speed-chip:hover {
+      color: #F8FAFC;
+    }
+
+    [data-theme="dark"] .speed-chip.active {
+      background: #1E2E48;
+      color: #FFFFFF;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+    }
+
+    [data-theme="dark"] .ios-switch {
+      background: #223049;
+      border-color: #2E405E;
+    }
+
+    [data-theme="dark"] .ios-switch.active {
+      background: #38BDF8;
+      border-color: #38BDF8;
+    }
+
+    [data-theme="dark"] .metrics-title-wrap svg {
+      fill: #38BDF8;
+    }
+
+    [data-theme="dark"] .metrics-title {
+      color: #94A3B8;
+    }
+
+    [data-theme="dark"] .metric-row {
+      border-bottom-color: rgba(255, 255, 255, 0.05);
+    }
+
+    [data-theme="dark"] .metric-icon-wrap {
+      background: #19253B;
+    }
+
+    [data-theme="dark"] .metric-icon-wrap svg {
+      fill: #94A3B8;
+    }
+
+    [data-theme="dark"] .metric-label {
+      color: #CBD5E1;
+    }
+
+    [data-theme="dark"] .metric-val-wrap {
+      color: #F8FAFC;
+    }
+
+    [data-theme="dark"] .action-link {
+      color: #64748B;
+    }
+
+    [data-theme="dark"] .action-link:hover {
+      color: #94A3B8;
+    }
+
+    /* Theme icon states */
+    [data-theme="dark"] .icon-sun {
+      display: block;
+      color: #FBBF24;
+    }
+
+    [data-theme="dark"] .icon-moon {
+      display: none;
     }
   </style>
 </head>
 <body>
 
-  <!-- Floating Main Window Card with Rounded Corners -->
-  <div class="popup-card">
+  <!-- Top User Profile Bar -->
+  <div class="user-profile-bar" id="userProfileBar">
+    <div class="user-profile-left">
+      <div class="user-avatar-chip" id="userAvatarChip">RU</div>
+      <div class="user-profile-meta">
+        <div class="user-profile-name" id="userProfileName">Rudranksh</div>
+        <div class="user-profile-badge" id="userProfileBadge">PRO MEMBER</div>
+      </div>
+    </div>
+    <div class="user-profile-actions">
+      <a href="#" class="profile-action-btn" id="openDashBtn" title="Open Dashboard">
+        <span>Dashboard</span>
+        <svg viewBox="0 0 24 24"><path d="M5 13h11.86l-5.43 5.43 1.42 1.42L21.14 12l-8.29-7.85-1.42 1.42L16.86 11H5v2z"/></svg>
+      </a>
+      <button class="profile-logout-btn" id="popupLogoutBtn" title="Sign Out">
+        <svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+      </button>
+    </div>
+  </div>
 
-    <!-- Top User Profile Bar (Synced with Website) -->
-    <div class="user-profile-bar" id="userProfileBar">
-      <div class="user-profile-left">
-        <div class="user-avatar-chip guest" id="userAvatarChip">G</div>
-        <div class="user-profile-meta">
-          <div class="user-profile-name" id="userProfileName">Guest User</div>
-          <div class="user-profile-badge guest" id="userProfileBadge">NOT SYNCED</div>
+  <!-- Status, Theme Toggle & Server Control Row -->
+  <div class="status-server-row">
+    <div class="status-group">
+      <div class="status-badge" id="statusBadge">
+        <div class="status-dot"></div>
+        <span id="statusBadgeText">ACTIVE</span>
+      </div>
+      <button class="icon-btn" id="reloadTabBtn" title="Refresh Page (Ctrl+Shift+R)">
+        <svg viewBox="0 0 24 24">
+          <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+        </svg>
+      </button>
+      <button class="icon-btn" id="themeToggleBtn" title="Switch Theme" aria-label="Toggle Theme">
+        <span class="theme-icon-wrap">
+          <svg class="theme-icon icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+          <svg class="theme-icon icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+        </span>
+      </button>
+    </div>
+    <div class="global-server-pill">
+      <svg class="globe-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+      <span>Global Server</span>
+      <span class="down-arrow">▾</span>
+    </div>
+  </div>
+
+  <!-- Primary CTA Button -->
+  <button class="master-btn" id="toggleBtn">
+    <svg viewBox="0 0 24 24">
+      <path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42A7.92 7.92 0 0 1 20 12c0 4.42-3.58 8-8 8s-8-3.58-8-8c0-2.38 1.04-4.52 2.69-6l-1.42-1.42A9.93 9.93 0 0 0 2 12c0 5.52 4.48 10 10 10s10-4.48 10-10c0-2.88-1.22-5.48-3.17-7.23z"/>
+    </svg>
+    <span id="toggleBtnText">SkelIO Active</span>
+    <span class="sparkle-icon">✨</span>
+  </button>
+
+  <!-- Auto-Toggle Speed Limit Card -->
+  <div class="card speed-card">
+    <div class="speed-header">
+      <div class="speed-title-wrap">
+        <div class="soft-circle-icon">
+          <svg viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
+        </div>
+        <div>
+          <div class="speed-title">Auto–Toggle Speed Limit</div>
+          <div class="speed-subtitle" id="speedSubtitle">Engage when &le; <strong id="speedDisplayVal">50 Mbps</strong></div>
         </div>
       </div>
-      <div class="user-profile-actions">
-        <a href="#" class="profile-action-btn" id="openDashBtn" title="Sign In or Open Dashboard">
-          <span>Sign In</span>
-          <svg viewBox="0 0 24 24"><path d="M5 13h11.86l-5.43 5.43 1.42 1.42L21.14 12l-8.29-7.85-1.42 1.42L16.86 11H5v2z"/></svg>
-        </a>
-        <button class="profile-logout-btn" id="popupLogoutBtn" title="Sign Out from SkelIO" style="display: none;">
-          <svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
-        </button>
+      <div class="speed-pill-btn" id="testSpeedBtn" title="Test Network Speed">
+        <span class="dot" id="speedDot"></span>
+        <span id="currentSpeedText">7.1 Mbps</span>
+        <span class="down-arrow">▾</span>
       </div>
     </div>
 
-    <!-- Top Header -->
-    <div class="header">
-      <div class="brand">
-        <div class="brand-logo">
+    <!-- Range Slider -->
+    <div class="speed-slider-wrap">
+      <input type="range" id="speedRangeSlider" min="2" max="100" step="2" value="50" class="speed-slider" />
+      <div class="speed-slider-labels">
+        <span>2 Mbps</span>
+        <span id="sliderMidVal">50 Mbps</span>
+        <span>100 Mbps</span>
+      </div>
+    </div>
+
+    <!-- Segmented Preset Chips -->
+    <div class="speed-presets" id="speedPresets">
+      <button class="speed-chip" data-speed="5">&le; 5M</button>
+      <button class="speed-chip" data-speed="15">&le; 15M</button>
+      <button class="speed-chip" data-speed="30">&le; 30M</button>
+      <button class="speed-chip active" data-speed="50">&le; 50M</button>
+      <button class="speed-chip" data-speed="always">Always</button>
+    </div>
+  </div>
+
+  <!-- Two Column Feature Cards -->
+  <div class="feature-grid">
+    <!-- Light Font Card -->
+    <div class="card feature-card" id="fontCard">
+      <div class="feature-top">
+        <div class="feature-icon-circle">Aa</div>
+        <div class="ios-switch active" id="fontBtn">
+          <span class="switch-knob"></span>
+        </div>
+      </div>
+      <div class="feature-bottom">
+        <div class="feature-label">Light Font</div>
+        <div class="feature-sub">
+          <span id="fontBtnText" style="display:none;">Light (300)</span>
+          Clean &amp; Modern Readability &gt;
+        </div>
+      </div>
+    </div>
+
+    <!-- 3D & Motion Card -->
+    <div class="card feature-card" id="threeDCard">
+      <div class="feature-top">
+        <div class="feature-icon-circle">
           <svg viewBox="0 0 24 24">
-            <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5zm0 4a3 3 0 110 6 3 3 0 010-6zm4.5 12.3c-1.3-.8-2.9-1.3-4.5-1.3s-3.2.5-4.5 1.3C6.6 17.1 6 15.6 6 14c0-3.3 2.7-6 6-6s6 2.7 6 6c0 1.6-.6 3.1-1.5 4.3z"/>
+            <path d="M21 16.5l-9 5.25-9-5.25V7.5l9-5.25 9 5.25v9zM12 4.15L5.04 8.2 12 12.26l6.96-4.06L12 4.15zM4.5 9.87v6.26l6.75 3.94v-6.26L4.5 9.87zm15 0l-6.75 3.94v6.26l6.75-3.94V9.87z"/>
           </svg>
         </div>
-        <div class="brand-title">
-          skelio <span>PRO</span>
+        <div class="ios-switch active" id="threeDBtn">
+          <span class="switch-knob"></span>
         </div>
       </div>
-      <div class="header-actions">
-        <div class="status-badge" id="statusBadge">
-          <div class="status-dot"></div>
-          <span id="statusBadgeText">ACTIVE</span>
+      <div class="feature-bottom">
+        <div class="feature-label">3D &amp; Motion</div>
+        <div class="feature-sub">
+          <span id="threeDBtnText" style="display:none;">Frozen Still</span>
+          Smooth Animations &amp; Effects &gt;
         </div>
-        <button class="icon-btn" id="reloadTabBtn" title="Hard Refresh Tab (Ctrl+Shift+R)">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
-          </svg>
-        </button>
       </div>
     </div>
+  </div>
 
-    <!-- Hero Site Control Card -->
-    <div class="hero-card">
-      <div class="site-info">
-        <div class="site-avatar-wrap">
-          <img id="siteFavicon" src="icons/icon32.png" alt="Site icon" onerror="this.src='icons/icon32.png'">
-        </div>
-        <div class="site-meta">
-          <div class="site-name" id="siteDomain">Current Page</div>
-          <div class="site-status">
-            <svg class="shield-icon" viewBox="0 0 24 24">
-              <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
-            </svg>
-            <span id="siteProtectionText">CLS Shield & Skeleton Lock</span>
-          </div>
-        </div>
-      </div>
-      <button class="master-btn" id="toggleBtn">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h-2v-6h2v6zm4 0h-2v-6h2v6z"/>
-        </svg>
-        <span id="toggleBtnText">SkelIO Active ✓</span>
-      </button>
-    </div>
-
-    <!-- Speed Auto-Toggle Threshold Card -->
-    <div class="speed-card">
-      <div class="speed-header">
-        <div class="speed-title-wrap">
-          <div class="speed-icon-box">
-            <svg viewBox="0 0 24 24">
-              <path d="M12 3C6.48 3 2 7.48 2 13c0 3.7 2.01 6.92 5 8.66.4.23.9-.06.9-.53v-.78c0-.33-.18-.63-.47-.8A8.006 8.006 0 014 13c0-4.41 3.59-8 8-8s8 3.59 8 8c0 2.45-1.11 4.64-2.87 6.11-.27.23-.43.57-.43.93v.54c0 .47.5.76.9.53 3-1.74 5-4.96 5-8.66 0-5.52-4.48-10-10-10zm-1 5v5.59l3.71 3.71 1.41-1.41-3.12-3.12V8h-2z"/>
-            </svg>
-          </div>
-          <div class="speed-meta">
-            <div class="speed-title">Auto-Toggle Speed Limit</div>
-            <div class="speed-subtitle" id="speedSubtitle">Engage when &le; <strong id="speedDisplayVal">50 Mbps</strong></div>
-          </div>
-        </div>
-        <button class="current-speed-pill" id="testSpeedBtn" title="Click to benchmark actual speed">
-          <span class="speed-dot" id="speedDot"></span>
-          <span id="currentSpeedText">Measuring...</span>
-          <svg class="refresh-icon" viewBox="0 0 24 24">
-            <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
-          </svg>
-        </button>
-      </div>
-
-      <!-- Interactive Speed Range Slider -->
-      <div class="speed-slider-wrap">
-        <input type="range" id="speedRangeSlider" min="2" max="100" step="2" value="50" class="speed-slider" title="Drag to adjust threshold" />
-        <div class="speed-slider-labels">
-          <span>2 Mbps</span>
-          <span id="sliderMidVal">50 Mbps</span>
-          <span>100 Mbps</span>
-        </div>
-      </div>
-
-      <!-- Preset Speed Buttons -->
-      <div class="speed-presets" id="speedPresets">
-        <button class="speed-chip" data-speed="5" title="Slow (&le; 5 Mbps)">&le; 5M</button>
-        <button class="speed-chip" data-speed="15" title="Moderate (&le; 15 Mbps)">&le; 15M</button>
-        <button class="speed-chip" data-speed="30" title="Standard (&le; 30 Mbps)">&le; 30M</button>
-        <button class="speed-chip active" data-speed="50" title="Fast (&le; 50 Mbps)">&le; 50M</button>
-        <button class="speed-chip" data-speed="always" title="Always active on all speeds">Always</button>
-      </div>
-    </div>
-
-    <!-- Feature Controls Grid -->
-    <div class="feature-grid">
-      <!-- Light Typography Card -->
-      <div class="feature-card">
-        <div class="feature-top">
-          <div class="feature-icon-box font-icon">Aa</div>
-          <div class="feature-label">Light Font</div>
-        </div>
-        <button class="feature-btn active" id="fontBtn">
-          <span id="fontBtnText">Light (300)</span>
-        </button>
-      </div>
-
-      <!-- 3D & Motion Card -->
-      <div class="feature-card">
-        <div class="feature-top">
-          <div class="feature-icon-box threed-icon">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M21 16.5l-9 5.25-9-5.25V7.5l9-5.25 9 5.25v9zM12 4.15L5.04 8.2 12 12.26l6.96-4.06L12 4.15zM4.5 9.87v6.26l6.75 3.94v-6.26L4.5 9.87zm15 0l-6.75 3.94v6.26l6.75-3.94V9.87z"/>
-            </svg>
-          </div>
-          <div class="feature-label">3D & Motion</div>
-        </div>
-        <button class="feature-btn purple-active" id="threeDBtn">
-          <span id="threeDBtnText">Frozen Still</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Live Metrics Dashboard -->
-    <div class="metrics-container">
-      <div class="metrics-header">
-        <div class="metrics-title">Live Performance Impact</div>
-        <div class="metrics-live">ACTIVE</div>
-      </div>
-
-      <div class="metric-row">
-        <div class="metric-left">
-          <div class="metric-icon-wrap">
-            <svg viewBox="0 0 24 24">
-              <path d="M4 6h16V4H4c-1.1 0-2 .9-2 2v11H0v3h14v-3H4V6zm19 2h-6c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h6c.55 0 1-.45 1-1V9c0-.55-.45-1-1-1zm-1 9h-4v-7h4v7z"/>
-            </svg>
-          </div>
-          <span class="metric-label">Layout Shifts Prevented</span>
-        </div>
-        <span class="metric-val green" id="layoutShifts">0</span>
-      </div>
-
-      <div class="metric-row">
-        <div class="metric-left">
-          <div class="metric-icon-wrap">
-            <svg viewBox="0 0 24 24">
-              <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
-            </svg>
-          </div>
-          <span class="metric-label">Bandwidth Saved</span>
-        </div>
-        <span class="metric-val cyan" id="bandwidth">0 KB</span>
-      </div>
-
-      <div class="metric-row">
-        <div class="metric-left">
-          <div class="metric-icon-wrap">
-            <svg viewBox="0 0 24 24">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-            </svg>
-          </div>
-          <span class="metric-label">Resources Locked</span>
-        </div>
-        <span class="metric-val" id="blocked">0</span>
-      </div>
-    </div>
-
-    <!-- Footer Quick Actions -->
-    <div class="footer-actions">
-      <button class="action-secondary-btn" id="hydrateAllBtn" title="Unlock all images & media on this page">
+  <!-- Live Performance Impact Card -->
+  <div class="card metrics-card">
+    <div class="metrics-header">
+      <div class="metrics-title-wrap">
         <svg viewBox="0 0 24 24">
-          <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0020 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 004 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+          <path d="M4 19h4v-7H4v7zm6 0h4V5h-4v14zm6 0h4v-11h-4v11z"/>
         </svg>
-        Load All Media
-      </button>
-      <button class="action-secondary-btn" id="shortcutHintBtn" title="Keyboard Shortcut">
-        <svg viewBox="0 0 24 24">
-          <path d="M20 5H4c-1.1 0-1.99.9-1.99 2L2 17c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-9 3h2v2h-2V8zm0 3h2v2h-2v-2zM8 8h2v2H8V8zm0 3h2v2H8v-2zm-1 4H5v-2h2v2zm0-3H5v-2h2v2zm0-3H5V6h2v2zm9 7H8v-2h8v2zm0-4h-2v-2h2v2zm0-3h-2V8h2v2zm3 7h-2v-2h2v2zm0-3h-2v-2h2v2zm0-3h-2V8h2v2z"/>
-        </svg>
-        Ctrl+Shift+R
-      </button>
+        <span class="metrics-title">LIVE PERFORMANCE IMPACT</span>
+      </div>
+      <div class="metrics-live-dot">ACTIVE</div>
     </div>
 
-  </div> <!-- /popup-card -->
+    <div class="metric-row">
+      <div class="metric-left">
+        <div class="metric-icon-wrap">
+          <svg viewBox="0 0 24 24"><path d="M4 6h16V4H4c-1.1 0-2 .9-2 2v11H0v3h14v-3H4V6zm19 2h-6c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h6c.55 0 1-.45 1-1V9c0-.55-.45-1-1-1zm-1 9h-4v-7h4v7z"/></svg>
+        </div>
+        <span class="metric-label">Layout Shifts Prevented</span>
+      </div>
+      <div class="metric-val-wrap">
+        <span id="layoutShifts">32</span>
+        <span class="arrow">&gt;</span>
+      </div>
+    </div>
+
+    <div class="metric-row">
+      <div class="metric-left">
+        <div class="metric-icon-wrap">
+          <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+        </div>
+        <span class="metric-label">Bandwidth Saved</span>
+      </div>
+      <div class="metric-val-wrap">
+        <span id="bandwidth">11.2 MB</span>
+        <span class="arrow">&gt;</span>
+      </div>
+    </div>
+
+    <!-- Hidden compatibility nodes for JS -->
+    <span id="blocked">0</span>
+    <img id="siteFavicon" src="icons/icon16.png" alt="" />
+    <span id="siteDomain">antigravity.google</span>
+    <span id="siteProtectionText">Protection Standby</span>
+  </div>
+
+  <!-- Discreet Minimalist Footer -->
+  <div class="footer-actions">
+    <button class="action-link" id="hydrateAllBtn" title="Load all page media">
+      <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+      </svg>
+      <span>Load All Media</span>
+    </button>
+    <button class="action-link" id="shortcutHintBtn" title="Keyboard Shortcut">
+      <span>Ctrl+Shift+R</span>
+    </button>
+  </div>
 
   <script src="popup.js"></script>
 </body>

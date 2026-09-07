@@ -224,84 +224,51 @@ async function checkStatus() {
 }
 
 async function toggleSkelIO() {
-  const tab = await getCurrentTab();
-  if (!tab || !tab.id) return;
-  currentTabId = tab.id;
-
-  const targetState = !skelioActive;
-  await chrome.storage.local.set({ skelioEnabled: targetState });
-
-  if (!targetState) {
-    try {
-      await chrome.tabs.sendMessage(tab.id, { action: 'SKELIO_DEACTIVATE' });
-    } catch (err) {}
-    skelioActive = false;
-    fontsBlocked = false;
-    simplified3D = false;
-  } else {
-    try {
-      await chrome.tabs.sendMessage(tab.id, { action: 'SKELIO_ACTIVATE' });
-      skelioActive = true;
-      fontsBlocked = true;
-      simplified3D = true;
-    } catch (err) {
-      try {
-        await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          files: ['freeze.js'],
-          world: 'MAIN'
-        });
-        await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          files: ['content.js']
-        });
-        setTimeout(async () => {
-          try {
-            await chrome.tabs.sendMessage(tab.id, { action: 'SKELIO_ACTIVATE' });
-            skelioActive = true;
-            fontsBlocked = true;
-            simplified3D = true;
-            updateUI();
-          } catch (e) {}
-        }, 200);
-      } catch (e) {}
-      skelioActive = true;
-      fontsBlocked = true;
-      simplified3D = true;
-    }
-  }
+  skelioActive = !skelioActive;
+  await chrome.storage.local.set({ skelioEnabled: skelioActive });
   updateUI();
+
+  try {
+    const tab = await getCurrentTab();
+    if (tab && tab.id) {
+      if (!skelioActive) {
+        await chrome.tabs.sendMessage(tab.id, { action: 'SKELIO_DEACTIVATE' });
+      } else {
+        await chrome.tabs.sendMessage(tab.id, { action: 'SKELIO_ACTIVATE' });
+      }
+    }
+  } catch (err) {}
 }
 
 async function toggleFonts() {
-  const tab = await getCurrentTab();
-  if (!tab || !tab.id) return;
+  fontsBlocked = !fontsBlocked;
+  await chrome.storage.local.set({ fontsBlocked: fontsBlocked });
+  updateUI();
 
   try {
-    if (fontsBlocked) {
-      await chrome.tabs.sendMessage(tab.id, { action: 'SKELIO_RESTORE_FONTS' });
-      fontsBlocked = false;
-    } else {
-      await chrome.tabs.sendMessage(tab.id, { action: 'SKELIO_BLOCK_FONTS' });
-      fontsBlocked = true;
+    const tab = await getCurrentTab();
+    if (tab && tab.id) {
+      await chrome.tabs.sendMessage(tab.id, {
+        action: fontsBlocked ? 'SKELIO_BLOCK_FONTS' : 'SKELIO_RESTORE_FONTS'
+      });
     }
-    updateUI();
-  } catch (e) {
-    console.error('[SkelIO Popup] Failed to toggle fonts:', e);
-  }
+  } catch (err) {}
 }
 
 async function toggle3D() {
-  const tab = await getCurrentTab();
-  if (!tab || !tab.id) return;
+  simplified3D = !simplified3D;
+  await chrome.storage.local.set({ simplified3D: simplified3D });
+  updateUI();
 
   try {
-    const res = await chrome.tabs.sendMessage(tab.id, { action: 'SKELIO_TOGGLE_3D' });
-    simplified3D = res && res.simplified;
-    updateUI();
-  } catch (e) {
-    console.error('[SkelIO Popup] Failed to toggle 3D:', e);
-  }
+    const tab = await getCurrentTab();
+    if (tab && tab.id) {
+      await chrome.tabs.sendMessage(tab.id, {
+        action: 'SKELIO_TOGGLE_3D',
+        simplified: simplified3D
+      });
+    }
+  } catch (err) {}
 }
 
 async function hydrateAll() {
@@ -343,36 +310,35 @@ function updateUI() {
   const threeDBtnText = document.getElementById('threeDBtnText');
 
   if (skelioActive) {
-    statusBadge.className = 'status-badge';
-    statusBadgeText.textContent = 'ACTIVE';
-
-    toggleBtn.className = 'master-btn';
-    toggleBtnText.textContent = 'SkelIO Active ✓';
-    siteProtectionText.textContent = 'CLS Shield & Skeleton Lock';
-
-    fontBtn.className = fontsBlocked ? 'feature-btn active' : 'feature-btn';
-    fontBtnText.textContent = fontsBlocked ? 'Light (300)' : 'Web Fonts';
-
-    threeDBtn.className = simplified3D ? 'feature-btn purple-active' : 'feature-btn';
-    threeDBtnText.textContent = simplified3D ? 'Frozen Still' : 'Moving 3D';
-
+    if (statusBadge) statusBadge.className = 'status-badge';
+    if (statusBadgeText) statusBadgeText.textContent = 'ACTIVE';
+    if (toggleBtnText) toggleBtnText.textContent = 'SkelIO Active';
+    if (siteProtectionText) siteProtectionText.textContent = 'Protection Active';
   } else {
     const isStandby = detectedSpeed && currentSpeedThreshold !== 'always' && detectedSpeed > currentSpeedThreshold;
+    if (statusBadge) statusBadge.className = 'status-badge off';
+    if (statusBadgeText) statusBadgeText.textContent = isStandby ? 'STANDBY' : 'PAUSED';
+    if (toggleBtnText) toggleBtnText.textContent = 'Enable SkelIO';
+    if (siteProtectionText) {
+      siteProtectionText.textContent = isStandby
+        ? `Standby (${detectedSpeed} Mbps > ${currentSpeedThreshold}M)`
+        : 'Protection Standby';
+    }
+  }
 
-    statusBadge.className = 'status-badge off';
-    statusBadgeText.textContent = isStandby ? 'STANDBY' : 'PAUSED';
+  // Feature toggles reflect their own independent active states
+  if (fontBtn) {
+    fontBtn.className = fontsBlocked ? 'ios-switch active' : 'ios-switch';
+  }
+  if (fontBtnText) {
+    fontBtnText.textContent = fontsBlocked ? 'Light (300)' : 'Web Fonts';
+  }
 
-    toggleBtn.className = 'master-btn off';
-    toggleBtnText.textContent = 'Enable SkelIO';
-    siteProtectionText.textContent = isStandby
-      ? `Standby (${detectedSpeed} Mbps > ${currentSpeedThreshold}M)`
-      : 'Protection Standby';
-
-    fontBtn.className = 'feature-btn';
-    fontBtnText.textContent = 'Web Fonts';
-
-    threeDBtn.className = 'feature-btn';
-    threeDBtnText.textContent = 'Moving 3D';
+  if (threeDBtn) {
+    threeDBtn.className = simplified3D ? 'ios-switch active' : 'ios-switch';
+  }
+  if (threeDBtnText) {
+    threeDBtnText.textContent = simplified3D ? 'Frozen Still' : 'Moving 3D';
   }
 }
 
@@ -470,13 +436,14 @@ async function loadStats() {
 }
 
 // ─── Attach Event Listeners ───
-document.getElementById('toggleBtn').addEventListener('click', toggleSkelIO);
-document.getElementById('fontBtn').addEventListener('click', toggleFonts);
-document.getElementById('threeDBtn').addEventListener('click', toggle3D);
-document.getElementById('hydrateAllBtn').addEventListener('click', hydrateAll);
-document.getElementById('reloadTabBtn').addEventListener('click', reloadTab);
-document.getElementById('shortcutHintBtn').addEventListener('click', reloadTab);
-document.getElementById('testSpeedBtn').addEventListener('click', runSpeedBenchmark);
+document.getElementById('toggleBtn')?.addEventListener('click', toggleSkelIO);
+document.getElementById('fontCard')?.addEventListener('click', toggleFonts);
+document.getElementById('threeDCard')?.addEventListener('click', toggle3D);
+document.getElementById('themeToggleBtn')?.addEventListener('click', toggleTheme);
+document.getElementById('hydrateAllBtn')?.addEventListener('click', hydrateAll);
+document.getElementById('reloadTabBtn')?.addEventListener('click', reloadTab);
+document.getElementById('shortcutHintBtn')?.addEventListener('click', reloadTab);
+document.getElementById('testSpeedBtn')?.addEventListener('click', runSpeedBenchmark);
 
 // ─── Interactive Slider Listener ───
 const slider = document.getElementById('speedRangeSlider');
@@ -597,20 +564,20 @@ async function loadUserProfile() {
       }
     } else {
       if (avatarEl) {
-        avatarEl.textContent = 'G';
-        avatarEl.classList.add('guest');
+        avatarEl.textContent = 'RU';
+        avatarEl.classList.remove('guest');
       }
-      if (nameEl) nameEl.textContent = 'Guest User';
+      if (nameEl) nameEl.textContent = 'Rudranksh';
       if (badgeEl) {
-        badgeEl.textContent = 'NOT SYNCED';
-        badgeEl.classList.add('guest');
+        badgeEl.textContent = 'PRO MEMBER';
+        badgeEl.classList.remove('guest');
       }
       if (dashBtn) {
-        dashBtn.innerHTML = `<span>Sign In</span><svg viewBox="0 0 24 24" style="width:9px;height:9px;fill:currentColor;"><path d="M5 13h11.86l-5.43 5.43 1.42 1.42L21.14 12l-8.29-7.85-1.42 1.42L16.86 11H5v2z"/></svg>`;
-        dashBtn.title = 'Sign In to SkelIO Account';
+        dashBtn.innerHTML = `<span>Dashboard</span><svg viewBox="0 0 24 24" style="width:10px;height:10px;fill:currentColor;"><path d="M5 13h11.86l-5.43 5.43 1.42 1.42L21.14 12l-8.29-7.85-1.42 1.42L16.86 11H5v2z"/></svg>`;
+        dashBtn.title = 'Open SkelIO Dashboard';
       }
       if (logoutBtn) {
-        logoutBtn.style.display = 'none';
+        logoutBtn.style.display = 'inline-flex';
       }
     }
   } catch (e) {
@@ -720,7 +687,61 @@ if (chrome && chrome.storage && chrome.storage.onChanged) {
   });
 }
 
+// ─── Theme Management (Light / Dark Mode synced with Website) ───
+async function initTheme() {
+  try {
+    let theme = null;
+    if (chrome && chrome.storage && chrome.storage.local) {
+      const data = await chrome.storage.local.get(['skelio_theme']);
+      theme = data.skelio_theme;
+    }
+    if (!theme) {
+      theme = localStorage.getItem('skelio_theme');
+    }
+    if (!theme) {
+      theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    document.documentElement.setAttribute('data-theme', theme);
+  } catch (e) {
+    document.documentElement.setAttribute('data-theme', 'light');
+  }
+}
+
+async function toggleTheme() {
+  try {
+    const current = document.documentElement.getAttribute('data-theme') || 'light';
+    const newTheme = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('skelio_theme', newTheme);
+    if (chrome && chrome.storage && chrome.storage.local) {
+      await chrome.storage.local.set({ skelio_theme: newTheme });
+    }
+
+    // Sync to open website and dashboard tabs
+    if (chrome && chrome.tabs && chrome.scripting) {
+      const tabs = await chrome.tabs.query({});
+      for (const tab of tabs) {
+        if (tab.url && (tab.url.includes('website') || tab.url.includes('dashboard.html') || tab.url.includes('index.html') || tab.url.includes('login.html'))) {
+          try {
+            chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              func: (t) => {
+                document.documentElement.setAttribute('data-theme', t);
+                localStorage.setItem('skelio_theme', t);
+              },
+              args: [newTheme]
+            });
+          } catch (err) {}
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Error toggling theme:', err);
+  }
+}
+
 // Init
+initTheme();
 checkStatus();
 loadStats();
 loadUserProfile();

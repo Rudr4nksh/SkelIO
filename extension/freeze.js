@@ -7,7 +7,7 @@
 (function() {
   'use strict';
 
-  let isFrozen = false;
+  let isFrozen = true; // Default to true as SkelIO runs active on load
   let canvasDrawCounts = new WeakMap();
 
   // Hook WebGL rendering to freeze continuous 3D loops after drawing initial still frame
@@ -22,7 +22,7 @@
         if (isFrozen) {
           const count = (canvasDrawCounts.get(this.canvas) || 0) + 1;
           canvasDrawCounts.set(this.canvas, count);
-          if (count > 5) {
+          if (count > 25) {
             // Scene has rendered — freeze at current frame as a still image!
             return;
           }
@@ -36,7 +36,7 @@
         if (isFrozen) {
           const count = (canvasDrawCounts.get(this.canvas) || 0) + 1;
           canvasDrawCounts.set(this.canvas, count);
-          if (count > 5) {
+          if (count > 25) {
             // Scene has rendered — freeze at current frame as a still image!
             return;
           }
@@ -52,39 +52,56 @@
     if (window.WebGL2RenderingContext) hookWebGL(window.WebGL2RenderingContext.prototype);
   } catch (e) {}
 
-  function applyFreeze() {
-    // 1. Pause infinite background loop animations into still frames without breaking one-shot UI animations (accordions, drawers, modals)
+  function pauseAllAnimations() {
+    if (!isFrozen) return;
+
+    // 1. Pause Web Animations API (CSS animations & WAAPI)
+    // ONLY target infinite looping animations, NEVER touch one-shot entrances or regular elements
     if (document.getAnimations) {
-      document.getAnimations().forEach(anim => {
-        try {
-          const timing = anim.effect ? anim.effect.getTiming() : null;
-          if (timing && (timing.iterations === Infinity || timing.duration === Infinity || timing.iterations > 10)) {
-            anim.pause();
-          }
-        } catch (e) {}
-      });
+      try {
+        const anims = document.getAnimations();
+        for (let i = 0; i < anims.length; i++) {
+          const anim = anims[i];
+          try {
+            const effect = anim.effect;
+            const timing = effect ? effect.getTiming() : null;
+            if (timing) {
+              const isInfinite = timing.iterations === Infinity || timing.duration === Infinity || timing.iterations > 20;
+              if (isInfinite) {
+                anim.pause();
+              }
+            }
+          } catch (e) {}
+        }
+      } catch (e) {}
     }
 
-    // 2. Pause videos so they stay as still frames
-    document.querySelectorAll('video').forEach(v => {
+    // 2. Pause videos so they stay as crisp still frames
+    const videos = document.querySelectorAll('video');
+    for (let i = 0; i < videos.length; i++) {
+      const v = videos[i];
       try {
-        v.pause();
+        if (!v.paused) v.pause();
         v.removeAttribute('autoplay');
         v.removeAttribute('loop');
       } catch (e) {}
-    });
+    }
+  }
 
-    console.log('[SkelIO] 3D & infinite animations frozen into still images — UI controls and menus preserved');
+  function applyFreeze() {
+    pauseAllAnimations();
+    console.log('[SkelIO] Infinite animations frozen into still images — UI controls and menus preserved');
   }
 
   function applyResume() {
-    // Reset draw counts so canvases can update if user wants to unfreeze
     canvasDrawCounts = new WeakMap();
 
     if (document.getAnimations) {
-      document.getAnimations().forEach(anim => {
-        try { anim.play(); } catch (e) {}
-      });
+      try {
+        document.getAnimations().forEach(anim => {
+          try { anim.play(); } catch (e) {}
+        });
+      } catch (e) {}
     }
     console.log('[SkelIO] Animations resumed');
   }
@@ -97,12 +114,22 @@
 
     if (isFrozen) {
       applyFreeze();
-      // Also apply once after microtask to catch elements rendered just after message
-      setTimeout(applyFreeze, 100);
-      setTimeout(applyFreeze, 500);
     } else {
       applyResume();
     }
   });
 
+  // Run freeze on load
+  applyFreeze();
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      if (isFrozen) applyFreeze();
+    }, { once: true });
+  }
+  window.addEventListener('load', () => {
+    if (isFrozen) applyFreeze();
+  }, { once: true });
+
 })();
+

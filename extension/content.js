@@ -157,7 +157,7 @@
         const data = await chrome.storage.local.get(['skelioEnabled', 'maxSpeedThreshold']);
         if (data.skelioEnabled === false) return; // User manually disabled
 
-        const threshold = data.maxSpeedThreshold !== undefined ? data.maxSpeedThreshold : 2;
+        const threshold = data.maxSpeedThreshold !== undefined ? data.maxSpeedThreshold : 50;
         const shouldBeActive = shouldActivateForSpeed(threshold);
 
         if (shouldBeActive && !isActive) {
@@ -207,50 +207,158 @@
       }
     }
 
-    // Priority 3: Inline styles
-    if (!width || !height) {
-      if (element.style.width) width = parseInt(element.style.width, 10) || width;
-      if (element.style.height) height = parseInt(element.style.height, 10) || height;
-    }
-
-    // Priority 4: Explicit HTML attributes (for unrendered / detached elements)
+    // Priority 3: Explicit HTML attributes (for unrendered / responsive markup)
     if (!width || !height) {
       if (element.width) width = parseInt(element.width, 10) || width;
       if (element.height) height = parseInt(element.height, 10) || height;
+      if (!width && element.getAttribute) {
+        width = parseInt(element.getAttribute('width'), 10) || 0;
+      }
+      if (!height && element.getAttribute) {
+        height = parseInt(element.getAttribute('height'), 10) || 0;
+      }
+    }
+
+    // Priority 4: Inline styles
+    if (!width || !height) {
+      if (element.style.width) width = parseInt(element.style.width, 10) || width;
+      if (element.style.height) height = parseInt(element.style.height, 10) || height;
     }
 
     // Priority 5: Aspect ratio fallback
     if (width && !height) height = Math.floor(width * 9 / 16);
     else if (height && !width) width = Math.floor(height * 16 / 9);
 
-    // Priority 6: Detect icons/avatars to avoid giant boxes
+    // Priority 6: Detect icons/avatars or provide fluid fallback flag
+    let isFluid = false;
     if (!width || !height) {
       const isIcon = (element.className + ' ' + (element.parentElement?.className || '')).toLowerCase().match(/icon|avatar|badge|logo|thumb|btn/);
       if (isIcon) {
         width = width || 32;
         height = height || 32;
       } else {
-        width = width || 300;
+        // Mark as fluid responsive so we do not distort responsive CSS Grid / Flexbox
+        isFluid = true;
+        width = width || 320;
         height = height || 200;
       }
     }
 
-    return { width, height };
+    return { width, height, isFluid };
   }
 
   // ============================================================================
-  // SVG SKELETON GENERATION
+  // ADAPTIVE SVG SKELETON GENERATION (Matches Light, Dark & Custom Web Themes)
   // ============================================================================
 
-  function createSkeletonSVG(width, height, label) {
-    const mainText = label || 'REMOVED BY SKELIO';
+  function detectAmbientTheme(element) {
+    let isDark = false;
+    let r = 248, g = 248, b = 245;
+
+    try {
+      // 1. Traverse up the parent tree to detect the local background color
+      let el = (element && element.nodeType === 1) ? element.parentElement : null;
+      while (el && el !== document && el !== document.documentElement) {
+        const style = window.getComputedStyle(el);
+        const bg = style.backgroundColor;
+        if (bg && bg !== 'transparent' && bg !== 'rgba(0, 0, 0, 0)') {
+          const parts = bg.match(/\d+/g);
+          if (parts && parts.length >= 3) {
+            r = parseInt(parts[0], 10);
+            g = parseInt(parts[1], 10);
+            b = parseInt(parts[2], 10);
+            const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            isDark = lum < 0.5;
+            return { isDark, r, g, b };
+          }
+        }
+        el = el.parentElement;
+      }
+
+      // 2. Check body or root HTML computed background
+      const bodyBg = window.getComputedStyle(document.body || document.documentElement).backgroundColor;
+      if (bodyBg && bodyBg !== 'transparent' && bodyBg !== 'rgba(0, 0, 0, 0)') {
+        const parts = bodyBg.match(/\d+/g);
+        if (parts && parts.length >= 3) {
+          r = parseInt(parts[0], 10);
+          g = parseInt(parts[1], 10);
+          b = parseInt(parts[2], 10);
+          const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+          isDark = lum < 0.5;
+          return { isDark, r, g, b };
+        }
+      }
+
+      // 3. Fallback: inspect data-theme, class signals, or prefers-color-scheme
+      const docTheme = document.documentElement.getAttribute('data-theme') || document.body?.getAttribute('data-theme');
+      const docClass = ((document.documentElement.className || '') + ' ' + (document.body?.className || '')).toLowerCase();
+      if (docTheme === 'dark' || docClass.includes('dark') || docClass.includes('night') || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        isDark = true;
+        r = 19; g = 29; b = 47;
+      }
+    } catch (e) {}
+
+    return { isDark, r, g, b };
+  }
+
+  function createSkeletonSVG(elementOrWidth, widthOrHeight, heightOrLabel, optionalLabel) {
+    let element = null;
+    let width = 300;
+    let height = 200;
+    let label = 'REMOVED BY SKELIO';
+
+    if (elementOrWidth && typeof elementOrWidth === 'object' && elementOrWidth.nodeType) {
+      element = elementOrWidth;
+      width = widthOrHeight || 300;
+      height = heightOrLabel || 200;
+      label = optionalLabel || 'REMOVED BY SKELIO';
+    } else {
+      width = elementOrWidth || 300;
+      height = widthOrHeight || 200;
+      label = heightOrLabel || 'REMOVED BY SKELIO';
+    }
+
+    const mainText = label;
     const subText = 'Click to load';
+    const { isDark, r, g, b } = detectAmbientTheme(element);
+
+    let stop0, stop1, borderColor, textColor, subTextColor;
+
+    if (isDark) {
+      // Harmonious Dark Mode Skeleton (YouTube dark, GitHub dark, Netflix, Spotify, Dark Sites)
+      const baseR = Math.max(14, Math.min(35, r));
+      const baseG = Math.max(18, Math.min(42, g));
+      const baseB = Math.max(28, Math.min(56, b));
+
+      stop0 = `rgb(${baseR + 8}, ${baseG + 10}, ${baseB + 14})`;
+      stop1 = `rgb(${baseR}, ${baseG}, ${baseB})`;
+      borderColor = `rgba(255, 255, 255, 0.12)`;
+      textColor = `#F8FAFC`;
+      subTextColor = `#38BDF8`;
+    } else {
+      // Harmonious Light Mode Skeleton (Wikipedia, Google, SkelIO Light, Medium)
+      const baseR = Math.max(220, Math.min(250, r));
+      const baseG = Math.max(220, Math.min(250, g));
+      const baseB = Math.max(215, Math.min(245, b));
+
+      stop0 = `rgb(${baseR}, ${baseG}, ${baseB})`;
+      stop1 = `rgb(${baseR - 10}, ${baseG - 10}, ${baseB - 10})`;
+      borderColor = `rgba(15, 23, 42, 0.08)`;
+      textColor = `#1D2440`;
+      subTextColor = `#5A6E85`;
+    }
 
     // 1. For very small images/icons (< 45px), show minimalist rounded box
     if (width < 45 || height < 45) {
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
-        <rect width="100%" height="100%" fill="#0F172A" rx="6" ry="6"/>
-        <rect width="100%" height="100%" fill="none" stroke="#334155" stroke-width="1" rx="6" ry="6"/>
+        <defs>
+          <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="${stop0}" />
+            <stop offset="100%" stop-color="${stop1}" />
+          </linearGradient>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#bgGrad)" rx="6" ry="6"/>
+        <rect width="100%" height="100%" fill="none" stroke="${borderColor}" stroke-width="1" rx="6" ry="6"/>
       </svg>`;
       return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
     }
@@ -259,27 +367,38 @@
     if (height < 75 || width < 140) {
       const singleFontSize = Math.max(11, Math.min(13, Math.floor(height * 0.32)));
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
-        <rect width="100%" height="100%" fill="#0F172A" rx="8" ry="8"/>
-        <rect width="100%" height="100%" fill="none" stroke="#334155" stroke-width="1.5" rx="8" ry="8"/>
-        <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" fill="#F8FAFC" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="${singleFontSize}px" font-weight="600" letter-spacing="0.3px">${subText}</text>
+        <defs>
+          <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="${stop0}" />
+            <stop offset="100%" stop-color="${stop1}" />
+          </linearGradient>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#bgGrad)" rx="8" ry="8"/>
+        <rect width="100%" height="100%" fill="none" stroke="${borderColor}" stroke-width="1.5" rx="8" ry="8"/>
+        <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" fill="${subTextColor}" font-family="-apple-system, BlinkMacSystemFont, 'Plus Jakarta Sans', 'Segoe UI', sans-serif" font-size="${singleFontSize}px" font-weight="700" letter-spacing="0.3px">${subText}</text>
       </svg>`;
       return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
     }
 
-    // 3. For standard and large elements: symmetric two-line layout centered at exactly 50%
+    // 3. For standard and large elements: symmetric two-line layout with theme-matching colors
     const fontSize = Math.max(12, Math.min(18, Math.floor(width / 18), Math.floor(height / 10)));
     const smallFontSize = Math.max(10, Math.min(13, Math.floor(fontSize * 0.75)));
     const gap = Math.max(4, Math.floor(fontSize * 0.35));
 
-    // Vertical offsets relative to y="50%"
     const dyMain = -Math.round((gap + smallFontSize) / 2);
     const dySub = Math.round((fontSize + gap) / 2);
 
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
-      <rect width="100%" height="100%" fill="#0F172A" rx="10" ry="10"/>
-      <rect width="100%" height="100%" fill="none" stroke="#334155" stroke-width="1.5" rx="10" ry="10"/>
-      <text x="50%" y="50%" dy="${dyMain}px" text-anchor="middle" dominant-baseline="central" fill="#FFFFFF" fill-opacity="0.95" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="${fontSize}px" font-weight="700" letter-spacing="0.4px">${mainText}</text>
-      <text x="50%" y="50%" dy="${dySub}px" text-anchor="middle" dominant-baseline="central" fill="#94A3B8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="${smallFontSize}px" font-weight="500" letter-spacing="0.2px">${subText}</text>
+      <defs>
+        <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="${stop0}" />
+          <stop offset="100%" stop-color="${stop1}" />
+        </linearGradient>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#bgGrad)" rx="10" ry="10"/>
+      <rect width="100%" height="100%" fill="none" stroke="${borderColor}" stroke-width="1.5" rx="10" ry="10"/>
+      <text x="50%" y="50%" dy="${dyMain}px" text-anchor="middle" dominant-baseline="central" fill="${textColor}" font-family="-apple-system, BlinkMacSystemFont, 'Plus Jakarta Sans', 'Segoe UI', sans-serif" font-size="${fontSize}px" font-weight="800" letter-spacing="0.5px">${mainText}</text>
+      <text x="50%" y="50%" dy="${dySub}px" text-anchor="middle" dominant-baseline="central" fill="${subTextColor}" font-family="-apple-system, BlinkMacSystemFont, 'Plus Jakarta Sans', 'Segoe UI', sans-serif" font-size="${smallFontSize}px" font-weight="700" letter-spacing="0.3px">⚡ ${subText}</text>
     </svg>`;
 
     return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
@@ -312,33 +431,14 @@
 
     const tag = element.tagName;
 
-    // Filter out UI icons, logos, wordmarks, and small badges so website navigation and branding are never broken
+    // Only skip tiny 16px utility dots/spacers
     if (tag === 'IMG') {
-      const isIconOrLogo = (element.className + ' ' + (element.id || '') + ' ' + (element.parentElement?.className || '')).toLowerCase().match(/icon|logo|brand|avatar|badge|emoji|flag|arrow|caret|btn|nav|status|spinner|symbol|wordmark/);
       const rect = element.getBoundingClientRect();
       const w = rect.width || parseInt(element.width, 10) || parseInt(element.style.width, 10) || 0;
       const h = rect.height || parseInt(element.height, 10) || parseInt(element.style.height, 10) || 0;
 
-      // Small icons (42px or less)
-      if (w > 0 && w <= 42 && h > 0 && h <= 42) {
-        return;
-      }
-      // Header, navigation, and toolbar logos/buttons
-      const inNavOrHeader = element.closest && element.closest('header, nav, [role="navigation"], [class*="nav"], [class*="header"], [class*="toolbar"]');
-      if (inNavOrHeader && w <= 240 && h <= 85) {
-        return;
-      }
-      // General logo/brand/wordmark classes
-      if (isIconOrLogo && w <= 220 && h <= 80) {
-        return;
-      }
-      // Action button textures and frames (e.g. hero-cta btn-box)
-      if (element.closest && element.closest('a[class*="cta"], a[class*="btn"], button[class*="btn"], [class*="cta"] img, [class*="btn"] img')) {
-        return;
-      }
-      // SVGs (almost always vector icons or logos)
-      const src = (element.getAttribute('src') || element.src || '').toLowerCase();
-      if (src.endsWith('.svg') || src.includes('.svg?') || src.startsWith('data:image/svg')) {
+      // Only skip tracking pixels and micro dots <= 16px
+      if (w > 0 && w <= 16 && h > 0 && h <= 16) {
         return;
       }
     }
@@ -391,7 +491,7 @@
     if (element.style.height) element.dataset.skelioHadInlineHeight = 'true';
     if (element.style.borderRadius) element.dataset.skelioHadInlineBorderRadius = 'true';
 
-    const { width, height } = extractGeometry(element);
+    const { width, height, isFluid } = extractGeometry(element);
     element.dataset.skelioOriginalSrc = originalSrc;
 
     // Determine label based on element type
@@ -406,9 +506,15 @@
     const isNaturallyPointerEventsNone = compStyle.pointerEvents === 'none';
     const isInitiallyHidden = compStyle.visibility === 'hidden' || compStyle.opacity === '0';
 
-    // Lock geometry with !important without breaking flex/grid layouts or stacking order
-    element.style.setProperty('width', width + 'px', 'important');
-    element.style.setProperty('height', height + 'px', 'important');
+    // Lock geometry gracefully without distorting responsive grids or flex items
+    if (isFluid) {
+      element.style.setProperty('max-width', '100%', 'important');
+      element.style.setProperty('aspect-ratio', `${width} / ${height}`, 'important');
+      element.style.setProperty('min-height', '80px', 'important');
+    } else {
+      element.style.setProperty('width', width + 'px', 'important');
+      element.style.setProperty('height', height + 'px', 'important');
+    }
 
     const parentWidth = element.parentElement ? element.parentElement.clientWidth : window.innerWidth;
     const isScenicLayer = (
@@ -875,13 +981,17 @@
   }
 
   function simplify3DWebsites() {
-    if (!document.head) {
+    const parent = document.head || document.documentElement;
+    if (!parent) {
       requestAnimationFrame(simplify3DWebsites);
       return;
     }
 
     // Determine base text color (sampling body or defaulting to dark/light)
-    let bodyColor = window.getComputedStyle(document.body || document.documentElement).color || 'rgb(255, 255, 255)';
+    let bodyColor = 'rgb(255, 255, 255)';
+    try {
+      bodyColor = window.getComputedStyle(document.body || document.documentElement).color || 'rgb(255, 255, 255)';
+    } catch (e) {}
     let isLightText = true;
     const rgbMatch = bodyColor.match(/\d+/g);
     if (rgbMatch && rgbMatch.length >= 3) {
@@ -898,7 +1008,7 @@
     if (!threeDStyleEl) {
       threeDStyleEl = document.createElement('style');
       threeDStyleEl.id = 'skelio-3d-simplifier';
-      document.head.appendChild(threeDStyleEl);
+      parent.appendChild(threeDStyleEl);
     }
 
     // Safe 3D & animation reduction — NEVER touch visibility, opacity, or layout of UI components
@@ -911,20 +1021,23 @@
         -webkit-marquee-repetition: 0 !important;
       }
 
-      /* 2. Pause continuous spinning, flickering, or floating decorative animations */
-      [class*="spin"], [class*="rotate"], [class*="pulse"], [class*="bounce"],
+      /* 2. Silence infinite CSS keyframe loops and decorative animations in-place without hiding elements */
+      [style*="animation:"][style*="infinite"],
+      [style*="animation-iteration-count: infinite"],
+      [class*="spin"], [class*="rotate"], [class*="pulse"], [class*="bounce"], [class*="floating"], [class*="loop"],
+      [class*="shimmer"], [class*="marquee"], [class*="infinite"],
       .lantern__body, .lantern__glow, .lantern__beam, .lantern__bob {
         animation-play-state: paused !important;
       }
 
-      /* 3. Hide continuous decorative particle overlays that consume heavy CPU/GPU */
+      /* 4. Freeze decorative particle overlays in place instead of hiding them */
       .drift__petal, .drift__lantern, .drift,
       .petals, .fireworks,
       .embers img, .wind__line {
-        display: none !important;
+        animation-play-state: paused !important;
       }
 
-      /* 4. Disable mouse-interaction loops and set flat background ONLY for dedicated 3D model viewers */
+      /* 5. Disable mouse-interaction loops and set flat background ONLY for dedicated 3D model viewers */
       model-viewer, spline-viewer, babylon {
         background-color: ${flatBgColor} !important;
         pointer-events: none !important;
@@ -1062,7 +1175,7 @@
     const candidates = document.querySelectorAll('[style*="background"], [style*="background-image"]');
 
     let count = 0;
-    for (let i = 0; i < candidates.length && count < 20; i++) {
+    for (let i = 0; i < candidates.length; i++) {
       const el = candidates[i];
       if (!el || el.hasAttribute(SKELIO_BG_ATTR)) continue;
       if (EXCLUDED_TAGS.includes(el.tagName)) continue;
@@ -1303,7 +1416,7 @@
             // Scan children
             if (node.querySelectorAll) {
               const targets = node.querySelectorAll(MEDIA_TARGETS.join(','));
-              for (let i = 0; i < targets.length && i < 50; i++) {
+              for (let i = 0; i < targets.length; i++) {
                 if (!targets[i].hasAttribute(SKELIO_HYDRATED_ATTR) && !(targets[i].closest && targets[i].closest(`[${SKELIO_HYDRATED_ATTR}]`))) {
                   lockElement(targets[i]);
                 }
@@ -1318,9 +1431,11 @@
               return;
             }
             if (target.hasAttribute(SKELIO_ATTR)) {
-              // Already locked — page JS overwrote src, reset to transparent pixel
+              // Already locked — page JS or lazy-loader updated src
               const currentSrc = target.src || '';
               if (target.tagName === 'IMG' && !currentSrc.startsWith('data:')) {
+                // Keep the real lazy-loaded URL in dataset so click-to-load can restore it
+                target.dataset.skelioOriginalSrc = currentSrc;
                 target.src = TRANSPARENT_PIXEL;
               }
             } else {
@@ -1766,15 +1881,16 @@
     // Remove translucent UI: strip GPU-heavy backdrop-filter blur and frosted glass overlays
     removeTranslucentUI();
 
-    // Lock existing elements
+    // Setup observer immediately to catch incoming DOM nodes at document_start
+    setupObserver();
+
+    // Lock existing elements immediately
+    lockExistingElements();
+
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', lockExistingElements, { once: true });
-    } else {
-      lockExistingElements();
     }
-
-    // Setup observer for dynamically added elements
-    setupObserver();
+    window.addEventListener('load', lockExistingElements, { once: true });
 
     console.log(`[SkelIO] Activated successfully [Profile: ${currentArchetype}]`);
   }
