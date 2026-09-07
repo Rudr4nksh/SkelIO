@@ -85,6 +85,87 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Tablet Comparison Card (Card 2) - Click to load simulation for tablet skeleton
+  const visualTablet = document.querySelector('.card-visual.visual-tablet');
+  if (visualTablet) {
+    const origTabletHtml = visualTablet.innerHTML;
+    let tabletLoaded = false;
+    visualTablet.style.cursor = 'pointer';
+    visualTablet.setAttribute('title', 'Click to simulate loading tablet wireframes');
+
+    visualTablet.addEventListener('click', () => {
+      tabletLoaded = !tabletLoaded;
+      visualTablet.style.opacity = '0.5';
+      setTimeout(() => {
+        if (tabletLoaded) {
+          // Replace skeleton wireframes with vibrant loaded media cards in the tablet
+          visualTablet.innerHTML = `
+            <svg class="card-illustration" viewBox="0 0 180 120" fill="none">
+              <rect x="18" y="14" width="144" height="92" rx="10" fill="#1E293B" stroke="#0F172A" stroke-width="2"/>
+              <rect x="24" y="20" width="132" height="80" rx="6" fill="#FFFFFF"/>
+              <line x1="24" y1="30" x2="156" y2="30" stroke="#E2E8F0" stroke-width="1"/>
+              <circle cx="30" cy="25" r="1.5" fill="#EF4444"/>
+              <circle cx="35" cy="25" r="1.5" fill="#F59E0B"/>
+              <circle cx="40" cy="25" r="1.5" fill="#10B981"/>
+              <rect x="52" y="23" width="70" height="4" rx="2" fill="#E2E8F0"/>
+              <!-- Sidebar -->
+              <rect x="30" y="36" width="22" height="58" rx="3" fill="#F1F5F9"/>
+              <circle cx="41" cy="44" r="4" fill="#6366F1"/>
+              <line x1="34" y1="54" x2="48" y2="54" stroke="#818CF8" stroke-width="2"/>
+              <line x1="34" y1="62" x2="46" y2="62" stroke="#CBD5E1" stroke-width="2"/>
+              <!-- 4 Loaded Content Cards with vibrant colors & icons -->
+              <rect x="58" y="36" width="34" height="22" rx="4" fill="#D1FAE5"/>
+              <circle cx="75" cy="47" r="4.5" fill="#10B981"/>
+              <rect x="98" y="36" width="34" height="22" rx="4" fill="#EDE9FE"/>
+              <circle cx="115" cy="47" r="4.5" fill="#8B5CF6"/>
+              <!-- Lower 2 Wireframe Cards loaded -->
+              <rect x="58" y="62" width="34" height="22" rx="4" fill="#E0F2FE"/>
+              <circle cx="75" cy="73" r="4.5" fill="#0284C7"/>
+              <rect x="98" y="62" width="34" height="22" rx="4" fill="#FEF3C7"/>
+              <circle cx="115" cy="73" r="4.5" fill="#F59E0B"/>
+              <!-- Content text lines -->
+              <line x1="136" y1="40" x2="150" y2="40" stroke="#94A3B8" stroke-width="2"/>
+              <line x1="136" y1="46" x2="148" y2="46" stroke="#94A3B8" stroke-width="2"/>
+              <line x1="136" y1="66" x2="150" y2="66" stroke="#94A3B8" stroke-width="2"/>
+              <line x1="136" y1="72" x2="146" y2="72" stroke="#94A3B8" stroke-width="2"/>
+            </svg>
+          `;
+        } else {
+          visualTablet.innerHTML = origTabletHtml;
+        }
+        visualTablet.style.opacity = '1';
+      }, 160);
+    });
+  }
+
+  // Interactive Card 1 & Card 3 feedback
+  const visualFrustrated = document.querySelector('.card-visual.visual-frustrated');
+  if (visualFrustrated) {
+    visualFrustrated.style.cursor = 'pointer';
+    visualFrustrated.setAttribute('title', 'Click to simulate SkelIO stabilizing layout');
+    let fixed = false;
+    visualFrustrated.addEventListener('click', () => {
+      fixed = !fixed;
+      visualFrustrated.style.transform = 'scale(0.97)';
+      setTimeout(() => {
+        visualFrustrated.style.transform = '';
+        visualFrustrated.style.boxShadow = fixed ? 'inset 0 0 0 3px #10B981' : '';
+      }, 150);
+    });
+  }
+
+  const visualCalm = document.querySelector('.card-visual.visual-calm');
+  if (visualCalm) {
+    visualCalm.style.cursor = 'pointer';
+    visualCalm.setAttribute('title', 'Click to simulate instant text reload');
+    visualCalm.addEventListener('click', () => {
+      visualCalm.style.transform = 'scale(0.97)';
+      setTimeout(() => {
+        visualCalm.style.transform = '';
+      }, 150);
+    });
+  }
+
   // 2. Download Button Behavior
   const downloadBtn = document.getElementById('downloadBtn');
   if (downloadBtn) {
@@ -377,8 +458,7 @@ document.addEventListener('DOMContentLoaded', () => {
       overlay.style.cssText = `
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(15, 23, 42, 0.55);
-        backdrop-filter: blur(6px);
+        background: rgba(15, 23, 42, 0.72);
         display: flex;
         align-items: center;
         justify-content: center;

@@ -1,0 +1,1830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login & Sign In - SkelIO</title>
+  <link rel="icon" type="image/png" href="../extension/icons/icon32.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* ==========================================================================
+       Ultra-Polished Vector Sharp SkelIO Login & Sign-In Page
+       ========================================================================== */
+    :root {
+      --card-cream: #FAF8F5;
+      --card-cream-dark: #0D1322;
+      --input-bg: #FFFFFF;
+      --input-bg-dark: #151D30;
+      --input-border: #E5E2DC;
+      --input-border-dark: #24304D;
+      --text-dark: #111827;
+      --text-muted-subtle: #6B7280;
+      --text-disclaimer: #9CA3AF;
+      --card-shadow: 0 30px 70px -15px rgba(15, 23, 42, 0.16), 0 10px 30px -8px rgba(15, 23, 42, 0.08);
+      --card-shadow-dark: 0 35px 80px -15px rgba(0, 0, 0, 0.7), 0 15px 35px -10px rgba(0, 0, 0, 0.5);
+      --ease-fluid: cubic-bezier(0.76, 0, 0.24, 1);
+      --ease-spring: cubic-bezier(0.68, -0.05, 0.265, 1.1);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body.auth-page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #F3EFEA;
+      background-image: 
+        radial-gradient(at 15% 15%, rgba(186, 230, 253, 0.6) 0px, transparent 55%),
+        radial-gradient(at 85% 85%, rgba(224, 231, 255, 0.7) 0px, transparent 50%),
+        radial-gradient(at 50% 50%, #F5F2EB 0px, #EBE6DC 100%);
+      padding: 32px 20px;
+      position: relative;
+      overflow-x: hidden;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      transition: background 0.4s ease;
+    }
+
+    [data-theme="dark"] body.auth-page {
+      background: #080C15;
+      background-image: 
+        radial-gradient(at 15% 15%, rgba(30, 58, 138, 0.35) 0px, transparent 60%),
+        radial-gradient(at 85% 85%, rgba(49, 46, 129, 0.3) 0px, transparent 55%),
+        radial-gradient(at 50% 50%, #0B101E 0px, #050810 100%);
+    }
+
+    /* Ambient animated lighting orbs */
+    .ambient-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(90px);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.55;
+      transition: opacity 0.5s ease;
+    }
+
+    .ambient-orb-1 {
+      width: 520px;
+      height: 520px;
+      background: radial-gradient(circle, #7DD3FC 0%, #38BDF8 60%, transparent 80%);
+      top: -120px;
+      right: -80px;
+    }
+
+    .ambient-orb-2 {
+      width: 440px;
+      height: 440px;
+      background: radial-gradient(circle, #FDE68A 0%, #FBBF24 50%, transparent 80%);
+      bottom: -100px;
+      left: -80px;
+      opacity: 0.35;
+    }
+
+    [data-theme="dark"] .ambient-orb-1 {
+      background: radial-gradient(circle, #1E40AF 0%, #1D4ED8 60%, transparent 80%);
+      opacity: 0.3;
+    }
+
+    [data-theme="dark"] .ambient-orb-2 {
+      background: radial-gradient(circle, #4338CA 0%, #3730A3 50%, transparent 80%);
+      opacity: 0.25;
+    }
+
+    /* Header Nav */
+    .auth-top-nav {
+      width: 100%;
+      max-width: 980px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      position: relative;
+      z-index: 20;
+    }
+
+    .auth-brand-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text-dark);
+      font-weight: 800;
+      font-size: 24px;
+      letter-spacing: -0.8px;
+      transition: color 0.3s;
+    }
+
+    [data-theme="dark"] .auth-brand-link {
+      color: #F9FAFB;
+    }
+
+    .brand-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      background: #0284C7;
+      border-radius: 50%;
+      margin-left: -2px;
+      animation: pulse-dot 2.5s infinite ease-in-out;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.3); opacity: 0.7; }
+    }
+
+    .auth-nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .auth-back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-muted-subtle);
+      text-decoration: none;
+      font-size: 13.5px;
+      font-weight: 600;
+      padding: 9px 18px;
+      border-radius: 100px;
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+    }
+
+    .auth-back-link:hover {
+      color: var(--text-dark);
+      background: #FFFFFF;
+      transform: translateX(-3px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    [data-theme="dark"] .auth-back-link {
+      background: rgba(21, 29, 48, 0.75);
+      border-color: rgba(255, 255, 255, 0.1);
+      color: #94A3B8;
+    }
+
+    [data-theme="dark"] .auth-back-link:hover {
+      background: #1E293B;
+      color: #F8FAFC;
+    }
+
+    .auth-back-link svg {
+      width: 14px;
+      height: 14px;
+      fill: currentColor;
+      transition: transform 0.2s ease;
+    }
+
+    .auth-back-link:hover svg {
+      transform: translateX(-2px);
+    }
+
+    /* Main Dual-Panel Auth Container */
+    .auth-card-container {
+      width: 100%;
+      max-width: 980px;
+      min-height: 590px;
+      background: var(--card-cream);
+      border-radius: 28px;
+      border: 1.5px solid rgba(0, 0, 0, 0.08);
+      box-shadow: var(--card-shadow);
+      position: relative;
+      overflow: hidden;
+      z-index: 10;
+      perspective: 1400px;
+      transition: background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+    }
+
+    [data-theme="dark"] .auth-card-container {
+      background: var(--card-cream-dark);
+      border-color: rgba(255, 255, 255, 0.08);
+      box-shadow: var(--card-shadow-dark);
+    }
+
+    /* The Two Sliding Panels */
+    .auth-panel {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 50%;
+      height: 100%;
+      box-sizing: border-box;
+      transition: transform 0.75s var(--ease-fluid), border-radius 0.75s var(--ease-fluid);
+      will-change: transform;
+    }
+
+    /* 1. Form Panel */
+    .form-panel {
+      left: 0;
+      z-index: 2;
+      background: var(--card-cream);
+      padding: 48px 52px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      border-radius: 28px 0 0 28px;
+      transition: transform 0.75s var(--ease-fluid), background-color 0.35s ease, border-radius 0.75s var(--ease-fluid);
+    }
+
+    [data-theme="dark"] .form-panel {
+      background: var(--card-cream-dark);
+    }
+
+    /* When in signup mode: form slides RIGHT */
+    .auth-card-container.signup-mode .form-panel {
+      transform: translateX(100%);
+      border-radius: 0 28px 28px 0;
+    }
+
+    /* Form Content Stack with Cascading Stagger */
+    .form-content-wrapper {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .form-view {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      transform: translateY(-50%);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.4s ease, transform 0.5s var(--ease-fluid), visibility 0.4s;
+    }
+
+    /* Active Form View */
+    .login-form-view {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transform: translateY(-50%) translateX(0);
+    }
+
+    .signup-form-view {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: translateY(-50%) translateX(35px);
+    }
+
+    .auth-card-container.signup-mode .login-form-view {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: translateY(-50%) translateX(-35px);
+    }
+
+    .auth-card-container.signup-mode .signup-form-view {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transform: translateY(-50%) translateX(0);
+      transition-delay: 0.12s;
+    }
+
+    /* Cascading stagger for elements inside active form */
+    .stagger-item {
+      opacity: 0;
+      transform: translateY(14px);
+      transition: opacity 0.45s ease, transform 0.5s var(--ease-spring);
+    }
+
+    .login-form-view .stagger-item {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .login-form-view .stagger-item:nth-child(1) { transition-delay: 0.05s; }
+    .login-form-view .stagger-item:nth-child(2) { transition-delay: 0.10s; }
+    .login-form-view .stagger-item:nth-child(3) { transition-delay: 0.15s; }
+    .login-form-view .stagger-item:nth-child(4) { transition-delay: 0.20s; }
+    .login-form-view .stagger-item:nth-child(5) { transition-delay: 0.25s; }
+    .login-form-view .stagger-item:nth-child(6) { transition-delay: 0.30s; }
+
+    .auth-card-container.signup-mode .signup-form-view .stagger-item {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .auth-card-container.signup-mode .signup-form-view .stagger-item:nth-child(1) { transition-delay: 0.20s; }
+    .auth-card-container.signup-mode .signup-form-view .stagger-item:nth-child(2) { transition-delay: 0.25s; }
+    .auth-card-container.signup-mode .signup-form-view .stagger-item:nth-child(3) { transition-delay: 0.30s; }
+    .auth-card-container.signup-mode .signup-form-view .stagger-item:nth-child(4) { transition-delay: 0.35s; }
+    .auth-card-container.signup-mode .signup-form-view .stagger-item:nth-child(5) { transition-delay: 0.40s; }
+    .auth-card-container.signup-mode .signup-form-view .stagger-item:nth-child(6) { transition-delay: 0.45s; }
+
+    /* Typography */
+    .auth-title {
+      font-size: 33px;
+      font-weight: 800;
+      color: var(--text-dark);
+      letter-spacing: -0.9px;
+      margin-bottom: 5px;
+      line-height: 1.15;
+    }
+
+    [data-theme="dark"] .auth-title {
+      color: #F8FAFC;
+    }
+
+    .auth-subtitle {
+      font-size: 14.5px;
+      font-weight: 500;
+      color: var(--text-muted-subtle);
+      margin-bottom: 26px;
+    }
+
+    [data-theme="dark"] .auth-subtitle {
+      color: #94A3B8;
+    }
+
+    /* Form Fields */
+    .form-group {
+      margin-bottom: 17px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 6px;
+      letter-spacing: -0.2px;
+    }
+
+    [data-theme="dark"] .form-label {
+      color: #E2E8F0;
+    }
+
+    .form-input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .form-input {
+      width: 100%;
+      height: 48px;
+      padding: 10px 16px;
+      background: var(--input-bg);
+      border: 1.5px solid var(--input-border);
+      border-radius: 12px;
+      font-family: inherit;
+      font-size: 14.5px;
+      color: var(--text-dark);
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+    }
+
+    .form-input:focus {
+      border-color: #0F172A;
+      box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
+      background: #FFFFFF;
+    }
+
+    [data-theme="dark"] .form-input {
+      background: var(--input-bg-dark);
+      border-color: var(--input-border-dark);
+      color: #F8FAFC;
+    }
+
+    [data-theme="dark"] .form-input:focus {
+      border-color: #38BDF8;
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+      background: #19233A;
+    }
+
+    .form-input::placeholder {
+      color: #9CA3AF;
+    }
+
+    [data-theme="dark"] .form-input::placeholder {
+      color: #64748B;
+    }
+
+    /* Password Eye Toggle */
+    .toggle-pass-btn {
+      position: absolute;
+      right: 12px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #9CA3AF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px;
+      border-radius: 8px;
+      transition: color 0.2s, background-color 0.2s;
+    }
+
+    .toggle-pass-btn:hover {
+      color: var(--text-dark);
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    [data-theme="dark"] .toggle-pass-btn:hover {
+      color: #F8FAFC;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .toggle-pass-btn svg {
+      width: 19px;
+      height: 19px;
+      fill: currentColor;
+    }
+
+    /* Red Forgot Password matching reference mockup */
+    .forgot-pass-wrap {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: -6px;
+      margin-bottom: 22px;
+    }
+
+    .forgot-pass-link {
+      color: #EF4444;
+      font-size: 13.5px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: color 0.15s, opacity 0.15s;
+    }
+
+    .forgot-pass-link:hover {
+      color: #DC2626;
+      text-decoration: underline;
+    }
+
+    /* Action Buttons Row */
+    .auth-actions-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    /* Solid Black Pill Button */
+    .btn-auth-solid {
+      flex: 1;
+      height: 48px;
+      background: #000000;
+      color: #FFFFFF;
+      border: 2px solid #000000;
+      border-radius: 12px;
+      font-family: inherit;
+      font-size: 15.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-auth-solid:hover {
+      background: #1F2937;
+      border-color: #1F2937;
+      transform: translateY(-1.5px);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+    }
+
+    .btn-auth-solid:active {
+      transform: translateY(0.5px) scale(0.98);
+    }
+
+    [data-theme="dark"] .btn-auth-solid {
+      background: #FFFFFF;
+      color: #000000;
+      border-color: #FFFFFF;
+      box-shadow: 0 4px 14px rgba(255, 255, 255, 0.15);
+    }
+
+    [data-theme="dark"] .btn-auth-solid:hover {
+      background: #E5E7EB;
+      border-color: #E5E7EB;
+    }
+
+    /* Outlined Pill Button */
+    .btn-auth-outline {
+      flex: 1.35;
+      height: 48px;
+      background: transparent;
+      color: #000000;
+      border: 2.5px solid #000000;
+      border-radius: 12px;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .btn-auth-outline:hover {
+      background: rgba(0, 0, 0, 0.05);
+      transform: translateY(-1.5px);
+    }
+
+    .btn-auth-outline:active {
+      transform: translateY(0.5px) scale(0.98);
+    }
+
+    [data-theme="dark"] .btn-auth-outline {
+      color: #FFFFFF;
+      border-color: #E2E8F0;
+    }
+
+    [data-theme="dark"] .btn-auth-outline:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    /* Disclaimer text */
+    .auth-disclaimer {
+      font-size: 11px;
+      color: var(--text-disclaimer);
+      line-height: 1.45;
+      letter-spacing: -0.1px;
+    }
+
+    [data-theme="dark"] .auth-disclaimer {
+      color: #64748B;
+    }
+
+    /* 2. Showcase Panel (Right on Login, Left on Sign-Up) */
+    .image-panel {
+      left: 50%;
+      z-index: 1;
+      background: radial-gradient(circle at 40% 30%, #CFE7FA 0%, #A3CEF1 50%, #87B9E3 100%);
+      border-radius: 0 28px 28px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: absolute;
+      transition: transform 0.75s var(--ease-fluid), border-radius 0.75s var(--ease-fluid), background 0.4s ease;
+      perspective: 1200px;
+    }
+
+    [data-theme="dark"] .image-panel {
+      background: radial-gradient(circle at 40% 30%, #172B4D 0%, #0F1D33 50%, #091222 100%);
+    }
+
+    /* When in signup mode: image slides LEFT */
+    .auth-card-container.signup-mode .image-panel {
+      transform: translateX(-100%);
+      border-radius: 28px 0 0 28px;
+    }
+
+    /* Showcase Stage */
+    .showcase-stage {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 20px;
+    }
+
+    .showcase-slide {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.65s ease, transform 0.75s var(--ease-fluid), filter 0.65s ease;
+      will-change: opacity, transform, filter;
+      padding: 24px;
+    }
+
+    /* Slide 1: Login Showcase */
+    .login-showcase-slide {
+      opacity: 1;
+      transform: scale(1);
+      filter: blur(0px);
+      pointer-events: auto;
+    }
+
+    /* Slide 2: Signup Showcase */
+    .signup-showcase-slide {
+      opacity: 0;
+      transform: scale(0.92);
+      filter: blur(6px);
+      pointer-events: none;
+    }
+
+    /* Transition states when in signup mode */
+    .auth-card-container.signup-mode .login-showcase-slide {
+      opacity: 0;
+      transform: scale(0.92);
+      filter: blur(6px);
+      pointer-events: none;
+    }
+
+    .auth-card-container.signup-mode .signup-showcase-slide {
+      opacity: 1;
+      transform: scale(1);
+      filter: blur(0px);
+      pointer-events: auto;
+      transition-delay: 0.1s;
+    }
+
+    /* ==========================================================================
+       Pure Vector/HTML Sharp Browser Mockup (100% Crisp at any DPI)
+       ========================================================================== */
+    .mockup-window {
+      width: 100%;
+      max-width: 440px;
+      background: #FFFFFF;
+      border-radius: 14px;
+      box-shadow: 0 24px 48px -12px rgba(18, 52, 86, 0.32), 0 8px 20px -4px rgba(18, 52, 86, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.8) inset;
+      overflow: hidden;
+      position: relative;
+      user-select: none;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      transition: transform 0.25s ease-out, box-shadow 0.25s ease-out;
+      transform-style: preserve-3d;
+    }
+
+    [data-theme="dark"] .mockup-window {
+      box-shadow: 0 28px 56px -12px rgba(0, 0, 0, 0.65), 0 10px 24px -4px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.15) inset;
+    }
+
+    /* Window Titlebar */
+    .mockup-titlebar {
+      background: #EDEAE7;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      position: relative;
+      border-bottom: 1px solid #DFDCD7;
+    }
+
+    .mockup-traffic-lights {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      z-index: 2;
+    }
+
+    .traffic-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .traffic-red { background: #FF5F56; }
+    .traffic-yellow { background: #FFBD2E; }
+    .traffic-green { background: #27C93F; }
+
+    /* Chrome Tab */
+    .mockup-tab {
+      position: absolute;
+      left: 68px;
+      bottom: 0;
+      background: #FFFFFF;
+      height: 28px;
+      padding: 0 14px 0 10px;
+      border-radius: 8px 8px 0 0;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #334155;
+      box-shadow: 0 -1px 3px rgba(0,0,0,0.04);
+    }
+
+    .mockup-tab-icon {
+      width: 15px;
+      height: 15px;
+      background: #0284C7;
+      border-radius: 3.5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #FFF;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .mockup-tab-close {
+      font-size: 13px;
+      color: #94A3B8;
+      margin-left: 6px;
+      cursor: default;
+    }
+
+    /* Browser Address Toolbar */
+    .mockup-toolbar {
+      background: #FAF9F8;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 10px;
+      border-bottom: 1px solid #EAE6E1;
+    }
+
+    .mockup-nav-arrows {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #64748B;
+    }
+
+    .mockup-nav-arrows svg {
+      width: 12px;
+      height: 12px;
+      fill: currentColor;
+    }
+
+    .mockup-reload-btn {
+      font-size: 13px;
+      line-height: 1;
+      color: #64748B;
+      cursor: default;
+    }
+
+    .mockup-url-bar {
+      flex: 1;
+      height: 24px;
+      background: #FFFFFF;
+      border: 1px solid #E2DED8;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #475569;
+      gap: 6px;
+    }
+
+    .mockup-lock-icon {
+      width: 10px;
+      height: 10px;
+      fill: #64748B;
+      flex-shrink: 0;
+    }
+
+    .mockup-actions-icons {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #64748B;
+    }
+
+    .mockup-avatar-mini {
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      background: #0284C7;
+      color: white;
+      font-size: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+    }
+
+    /* Window Viewport / Page Content */
+    .mockup-viewport {
+      background: #FFFFFF;
+      min-height: 310px;
+      position: relative;
+      overflow: hidden;
+      padding: 22px 26px;
+      box-sizing: border-box;
+    }
+
+    /* Realistic torn-paper edge accents */
+    .torn-edge-left, .torn-edge-right {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 32px;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .torn-edge-left {
+      left: 0;
+      background: linear-gradient(to right, rgba(0,0,0,0.05) 0%, transparent 100%),
+                  radial-gradient(ellipse at 0% 25%, rgba(0,0,0,0.08) 0%, transparent 60%),
+                  radial-gradient(ellipse at 0% 70%, rgba(0,0,0,0.08) 0%, transparent 60%);
+      border-right: 1.5px dashed rgba(0,0,0,0.12);
+    }
+
+    .torn-edge-right {
+      right: 0;
+      background: linear-gradient(to left, rgba(0,0,0,0.05) 0%, transparent 100%),
+                  radial-gradient(ellipse at 100% 35%, rgba(0,0,0,0.08) 0%, transparent 60%),
+                  radial-gradient(ellipse at 100% 80%, rgba(0,0,0,0.08) 0%, transparent 60%);
+      border-left: 1.5px dashed rgba(0,0,0,0.12);
+    }
+
+    /* 1. Login Viewport Page Content */
+    .viewport-login-content {
+      position: relative;
+      z-index: 2;
+    }
+
+    .mockup-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: #F1F5F9;
+      border: 1px solid #E2E8F0;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 700;
+      color: #334155;
+      margin-bottom: 8px;
+    }
+
+    .mockup-page-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #0F172A;
+      margin: 0 0 5px 0;
+      letter-spacing: -0.5px;
+    }
+
+    .mockup-page-desc {
+      font-size: 10.5px;
+      line-height: 1.45;
+      color: #475569;
+      margin: 0 0 14px 0;
+      max-width: 290px;
+    }
+
+    .mockup-cta-btn {
+      display: inline-flex;
+      align-items: center;
+      background: #0284C7;
+      color: #FFFFFF;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
+    }
+
+    /* Animated Spinner */
+    .mockup-spinner-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mockup-spinner {
+      width: 24px;
+      height: 24px;
+      animation: spin-pulse 2s linear infinite;
+    }
+
+    @keyframes spin-pulse {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .mockup-features {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid #F1F5F9;
+    }
+
+    .mockup-features-title {
+      font-size: 11px;
+      font-weight: 800;
+      color: #0F172A;
+      margin: 0 0 5px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .mockup-features-list {
+      margin: 0;
+      padding-left: 14px;
+      font-size: 10px;
+      color: #475569;
+      line-height: 1.55;
+    }
+
+    /* 2. Signup Viewport Dashboard Content */
+    .viewport-signup-content {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .dash-row {
+      display: flex;
+      gap: 9px;
+      align-items: stretch;
+    }
+
+    .dash-card {
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 10px;
+      padding: 8px 12px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .dash-card-dark-green {
+      background: linear-gradient(135deg, #064E3B 0%, #065F46 100%);
+      border: none;
+      color: white;
+    }
+
+    .dash-card-dark-blue {
+      background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+      border: none;
+      color: white;
+    }
+
+    .dash-card-wave {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      width: 100%;
+      height: 24px;
+      opacity: 0.85;
+      pointer-events: none;
+    }
+
+    .dash-shield-icon {
+      width: 36px;
+      height: 36px;
+      background: radial-gradient(circle at 35% 30%, #34D399 0%, #059669 80%);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      box-shadow: 0 4px 10px rgba(5, 150, 105, 0.4);
+      flex-shrink: 0;
+    }
+
+    .dash-metric-num {
+      font-size: 19px;
+      font-weight: 800;
+      color: #0F172A;
+      letter-spacing: -0.5px;
+      line-height: 1.15;
+    }
+
+    .dash-metric-label {
+      font-size: 9px;
+      font-weight: 700;
+      color: #64748B;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      margin-bottom: 2px;
+    }
+
+    .dash-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #059669;
+    }
+
+    .dash-status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10B981;
+      animation: pulse-dot 1.8s infinite;
+    }
+
+    /* Toast Notification */
+    .auth-toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(120px);
+      background: #0F172A;
+      color: #FFFFFF;
+      padding: 13px 26px;
+      border-radius: 100px;
+      font-size: 14px;
+      font-weight: 600;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+      z-index: 9999;
+      opacity: 0;
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .auth-toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    .auth-toast-icon {
+      color: #10B981;
+      flex-shrink: 0;
+    }
+
+    /* Responsive Mobile Layout */
+    @media (max-width: 860px) {
+      .auth-card-container {
+        flex-direction: column;
+        min-height: auto;
+        max-width: 480px;
+        border-radius: 24px;
+      }
+
+      .auth-panel {
+        position: relative;
+        width: 100%;
+        left: auto !important;
+        right: auto !important;
+        transform: none !important;
+        border-radius: 0 !important;
+      }
+
+      .image-panel {
+        height: 310px;
+        order: 1;
+        border-radius: 24px 24px 0 0 !important;
+        padding: 16px;
+      }
+
+      .form-panel {
+        order: 2;
+        padding: 36px 28px;
+        min-height: 480px;
+        border-radius: 0 0 24px 24px !important;
+      }
+
+      .auth-card-container.signup-mode .image-panel {
+        order: 1;
+        transform: none !important;
+      }
+
+      .auth-card-container.signup-mode .form-panel {
+        order: 2;
+        transform: none !important;
+      }
+
+      .auth-title {
+        font-size: 28px;
+      }
+    }
+  
+    /* ==========================================================================
+       Exact Dashboard Viewport (Matches user uploaded image media_1788761563652)
+       ========================================================================== */
+    .viewport-dashboard-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+    }
+
+    /* Common Card Pair Row */
+    .dash-split-card {
+      display: flex;
+      align-items: stretch;
+      background: #FFFFFF;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+      overflow: hidden;
+      position: relative;
+      height: 72px;
+    }
+
+    /* Torn Paper Vertical Divider between graphic side and data side */
+    .torn-divider {
+      width: 14px;
+      position: relative;
+      background: #FFFFFF;
+      flex-shrink: 0;
+      margin-left: -7px;
+      margin-right: -7px;
+      z-index: 4;
+    }
+
+    .torn-divider::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: 
+        radial-gradient(circle at 100% 20%, transparent 4px, #FFFFFF 5px),
+        radial-gradient(circle at 100% 50%, transparent 5px, #FFFFFF 6px),
+        radial-gradient(circle at 100% 80%, transparent 4px, #FFFFFF 5px);
+      filter: drop-shadow(-2px 0px 2px rgba(0,0,0,0.12));
+    }
+
+    /* --- ROW 1: Shield + Green Wave + Users --- */
+    .row1-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* 3D Faceted Emerald Diamond Shield */
+    .emerald-shield-badge {
+      width: 54px;
+      height: 64px;
+      position: relative;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      filter: drop-shadow(0 6px 14px rgba(5, 150, 105, 0.45));
+      animation: float-shield 3s ease-in-out infinite alternate;
+    }
+
+    @keyframes float-shield {
+      0% { transform: translateY(0px) rotate(0deg); }
+      100% { transform: translateY(-3px) rotate(-1.5deg); }
+    }
+
+    .emerald-shield-svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .row1-card-pair {
+      flex: 1;
+    }
+
+    .graphic-pane-green {
+      flex: 1.1;
+      background: linear-gradient(135deg, #064E3B 0%, #0F3E33 100%);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .metric-pane-white {
+      flex: 1.3;
+      padding: 10px 14px 10px 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      background: #FFFFFF;
+    }
+
+    .metric-title {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #4B5563;
+      margin-bottom: 2px;
+      letter-spacing: -0.2px;
+    }
+
+    .metric-big-num {
+      font-size: 24px;
+      font-weight: 800;
+      color: #111827;
+      letter-spacing: -0.8px;
+      line-height: 1.1;
+    }
+
+    /* --- ROW 2: Blue Wave + Speedometer API --- */
+    .graphic-pane-blue {
+      flex: 1.3;
+      background: linear-gradient(135deg, #0F172A 0%, #172554 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .metric-pane-speedo {
+      flex: 1.2;
+      padding: 10px 14px 10px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #FFFFFF;
+    }
+
+    .speedo-gauge-wrap {
+      width: 44px;
+      height: 28px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* --- ROW 3: Soft Coral Wave + Operational --- */
+    .graphic-pane-coral {
+      flex: 1.3;
+      background: linear-gradient(180deg, #FFFFFF 0%, #FFF5F1 100%);
+      position: relative;
+      overflow: hidden;
+      border-right: 1px solid #FEE2E2;
+    }
+
+    .metric-pane-operational {
+      flex: 1.4;
+      padding: 10px 14px 10px 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      background: #FFFFFF;
+    }
+
+    .status-operational-text {
+      font-size: 18px;
+      font-weight: 800;
+      color: #059669;
+      letter-spacing: -0.5px;
+      margin-top: 1px;
+    }
+</style>
+</head>
+<body class="auth-page">
+
+  <!-- Ambient Light Orbs -->
+  <div class="ambient-orb ambient-orb-1"></div>
+  <div class="ambient-orb ambient-orb-2"></div>
+
+  <!-- Header Nav -->
+  <header class="auth-top-nav">
+    <a href="index.html" class="auth-brand-link" title="Return to SkelIO Home">
+      <span>SkelIO</span><span class="brand-dot"></span>
+    </a>
+
+    <div class="auth-nav-actions">
+      <!-- Theme Switcher -->
+      <button class="theme-toggle-btn" id="themeToggleBtn" aria-label="Toggle dark/light mode" title="Switch Theme">
+        <span class="theme-icon-wrap">
+          <svg class="theme-icon icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg class="theme-icon icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </span>
+      </button>
+
+      <!-- Back Link -->
+      <a href="index.html" class="auth-back-link">
+        <svg viewBox="0 0 24 24">
+          <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+        </svg>
+        Back to Website
+      </a>
+    </div>
+  </header>
+
+  <!-- Sliding Dual-Panel Container -->
+  <main class="auth-card-container" id="authCard">
+
+    <!-- 1. FORM PANEL (Slides Left/Right) -->
+    <div class="auth-panel form-panel">
+      <div class="form-content-wrapper">
+
+        <!-- A. LOGIN FORM -->
+        <div class="form-view login-form-view" id="loginView">
+          <div class="stagger-item">
+            <h1 class="auth-title">Welcome Back!</h1>
+            <p class="auth-subtitle">Please login in to your account</p>
+          </div>
+
+          <form id="loginForm" autocomplete="on">
+            <div class="form-group stagger-item">
+              <label class="form-label" for="loginEmail">Email address:</label>
+              <div class="form-input-wrap">
+                <input type="email" id="loginEmail" class="form-input" placeholder="alex@company.com" required autocomplete="username">
+              </div>
+            </div>
+
+            <div class="form-group stagger-item">
+              <label class="form-label" for="loginPassword">Password:</label>
+              <div class="form-input-wrap">
+                <input type="password" id="loginPassword" class="form-input" placeholder="••••••••••••" required autocomplete="current-password">
+                <button type="button" class="toggle-pass-btn" aria-label="Toggle password visibility" data-target="loginPassword">
+                  <svg class="eye-icon" viewBox="0 0 24 24">
+                    <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="forgot-pass-wrap stagger-item">
+              <a href="#" class="forgot-pass-link" id="forgotPassBtn">Forgot password?</a>
+            </div>
+
+            <div class="auth-actions-row stagger-item">
+              <button type="submit" class="btn-auth-solid" id="submitLoginBtn">Login</button>
+              <button type="button" class="btn-auth-outline" id="toSignupBtn">Create Account</button>
+            </div>
+
+            <p class="auth-disclaimer stagger-item">By sign up you agree to our policy and have read our data property.</p>
+          </form>
+        </div>
+
+        <!-- B. SIGN-UP / CREATE ACCOUNT FORM -->
+        <div class="form-view signup-form-view" id="signupView">
+          <div class="stagger-item">
+            <h1 class="auth-title">Create Account</h1>
+            <p class="auth-subtitle">Join SkelIO for shift-free, high-speed browsing</p>
+          </div>
+
+          <form id="signupForm" autocomplete="on">
+            <div class="form-group stagger-item">
+              <label class="form-label" for="signupName">Full Name:</label>
+              <div class="form-input-wrap">
+                <input type="text" id="signupName" class="form-input" placeholder="Alex Morgan" required autocomplete="name">
+              </div>
+            </div>
+
+            <div class="form-group stagger-item">
+              <label class="form-label" for="signupEmail">Email address:</label>
+              <div class="form-input-wrap">
+                <input type="email" id="signupEmail" class="form-input" placeholder="alex@company.com" required autocomplete="username">
+              </div>
+            </div>
+
+            <div class="form-group stagger-item">
+              <label class="form-label" for="signupPassword">Create Password:</label>
+              <div class="form-input-wrap">
+                <input type="password" id="signupPassword" class="form-input" placeholder="Minimum 8 characters" required minlength="8" autocomplete="new-password">
+                <button type="button" class="toggle-pass-btn" aria-label="Toggle password visibility" data-target="signupPassword">
+                  <svg class="eye-icon" viewBox="0 0 24 24">
+                    <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="auth-actions-row stagger-item" style="margin-top: 24px;">
+              <button type="submit" class="btn-auth-solid" id="submitSignupBtn">Create Account</button>
+              <button type="button" class="btn-auth-outline" id="toLoginBtn">Login</button>
+            </div>
+
+            <p class="auth-disclaimer stagger-item">By creating an account you agree to our terms of service and privacy policy.</p>
+          </form>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 2. SHOWCASE PANEL (Pure 100% Vector Sharp DOM Mockup) -->
+    <div class="auth-panel image-panel" id="imagePanel">
+      <div class="showcase-stage">
+
+        <!-- Slide 1: Login Showcase (100% Vector Sharp Browser Window) -->
+        <div class="showcase-slide login-showcase-slide" id="loginSlide">
+          <div class="mockup-window" id="loginMockup">
+            <!-- Window Titlebar -->
+            <div class="mockup-titlebar">
+              <div class="mockup-traffic-lights">
+                <span class="traffic-dot traffic-red"></span>
+                <span class="traffic-dot traffic-yellow"></span>
+                <span class="traffic-dot traffic-green"></span>
+              </div>
+              <div class="mockup-tab">
+                <span class="mockup-tab-icon">S</span>
+                <span>skelio.dev</span>
+                <span class="mockup-tab-close">&times;</span>
+              </div>
+            </div>
+
+            <!-- Browser Toolbar -->
+            <div class="mockup-toolbar">
+              <div class="mockup-nav-arrows">
+                <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                <svg viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
+                <span class="mockup-reload-btn">&#x27F3;</span>
+              </div>
+              <div class="mockup-url-bar">
+                <svg class="mockup-lock-icon" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+                <span>skelio.dev</span>
+              </div>
+              <div class="mockup-actions-icons">
+                <span style="font-size:12px;opacity:0.6;">&#x2727;</span>
+                <div class="mockup-avatar-mini">A</div>
+              </div>
+            </div>
+
+            <!-- Viewport Content -->
+            <div class="mockup-viewport">
+              <div class="torn-edge-left"></div>
+              <div class="torn-edge-right"></div>
+
+              <div class="viewport-login-content">
+                <div class="mockup-badge">
+                  <span>&#x26A1;</span> Solution
+                </div>
+                <h2 class="mockup-page-title">Skelio</h2>
+                <p class="mockup-page-desc">
+                  Skelio is a fast, full-stack layout stability engine. Prevents cumulative layout shifts with modular components.
+                </p>
+
+                <div style="display:flex; align-items:center; gap: 14px; margin-bottom: 12px;">
+                  <span class="mockup-cta-btn">Get Started</span>
+                  <div class="mockup-spinner-wrap">
+                    <svg class="mockup-spinner" viewBox="0 0 50 50">
+                      <circle cx="25" cy="25" r="20" fill="none" stroke="#E2E8F0" stroke-width="5"></circle>
+                      <circle cx="25" cy="25" r="20" fill="none" stroke="#0284C7" stroke-width="5" stroke-dasharray="80" stroke-dashoffset="60" stroke-linecap="round"></circle>
+                    </svg>
+                    <span style="font-size: 10px; font-weight: 600; color: #64748B;">Layout Stable</span>
+                  </div>
+                </div>
+
+                <div class="mockup-features">
+                  <div class="mockup-features-title">Key Features</div>
+                  <ul class="mockup-features-list">
+                    <li>Simple Component API</li>
+                    <li>Built-in Shift Prevention</li>
+                    <li>Production-ready Zero GPU Overhead</li>
+                    <li>Fast skeleton replacement</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Slide 2: Sign-Up Dashboard Showcase (100% Vector Sharp Dashboard) -->
+        <div class="showcase-slide signup-showcase-slide" id="signupSlide">
+          <div class="mockup-window" id="signupMockup">
+            <!-- Titlebar -->
+            <div class="mockup-titlebar">
+              <div class="mockup-traffic-lights">
+                <span class="traffic-dot traffic-red"></span>
+                <span class="traffic-dot traffic-yellow"></span>
+                <span class="traffic-dot traffic-green"></span>
+              </div>
+              <div class="mockup-tab">
+                <span class="mockup-tab-icon" style="background:#059669;">&#x1F6E1;</span>
+                <span>skelio.dev/dashboard</span>
+                <span class="mockup-tab-close">&times;</span>
+              </div>
+            </div>
+
+            <!-- Toolbar -->
+            <div class="mockup-toolbar">
+              <div class="mockup-nav-arrows">
+                <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                <svg viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
+                <span class="mockup-reload-btn">&#x27F3;</span>
+              </div>
+              <div class="mockup-url-bar">
+                <svg class="mockup-lock-icon" viewBox="0 0 24 24" style="fill:#059669;"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+                <span>https://skelio.dev/dashboard/live-stats</span>
+              </div>
+              <div class="mockup-actions-icons">
+                <span style="font-size:12px;opacity:0.6;">&#x2727;</span>
+                <div class="mockup-avatar-mini" style="background:#059669;">S</div>
+              </div>
+            </div>
+
+            <!-- Viewport: Authentic SkelIO Protection Dashboard -->
+            <div class="mockup-viewport">
+              <div class="viewport-dashboard-layout">
+
+                <!-- ROW 1: Shield + CLS Score 0.00 + Shifts Prevented -->
+                <div class="row1-wrapper">
+                  <!-- 3D Emerald Diamond Shield with Lock -->
+                  <div class="emerald-shield-badge">
+                    <svg class="emerald-shield-svg" viewBox="0 0 100 115" fill="none">
+                      <path d="M50 4 L90 22 C90 68 50 110 50 110 C50 110 10 68 10 22 Z" fill="#047857" stroke="#065F46" stroke-width="2"/>
+                      <path d="M50 8 L16 24 C16 66 50 104 50 104 Z" fill="url(#s-grad-left)"/>
+                      <path d="M50 8 L84 24 C84 66 50 104 50 104 Z" fill="url(#s-grad-right)"/>
+                      <path d="M50 14 L24 28 C24 60 50 96 50 96 Z" fill="#10B981" opacity="0.65"/>
+                      <path d="M50 14 L76 28 C76 60 50 96 50 96 Z" fill="#34D399" opacity="0.8"/>
+                      <!-- Center Shield Lock Icon -->
+                      <path d="M42 54 V46 C42 41.5 45.5 38 50 38 C54.5 38 58 41.5 58 46 V54 H62 V72 H38 V54 Z M46 54 H54 V46 C54 43.8 52.2 42 50 42 C47.8 42 46 43.8 46 46 Z" fill="#FFFFFF"/>
+                      <defs>
+                        <linearGradient id="s-grad-left" x1="16" y1="24" x2="50" y2="104" gradientUnits="userSpaceOnUse">
+                          <stop stop-color="#059669"/>
+                          <stop offset="1" stop-color="#047857"/>
+                        </linearGradient>
+                        <linearGradient id="s-grad-right" x1="84" y1="24" x2="50" y2="104" gradientUnits="userSpaceOnUse">
+                          <stop stop-color="#34D399"/>
+                          <stop offset="1" stop-color="#10B981"/>
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                  </div>
+
+                  <!-- Pair: CLS Score Zero + Layout Stability Badge -->
+                  <div class="dash-split-card row1-card-pair">
+                    <div class="graphic-pane-green">
+                      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; height:100%;">
+                        <span style="font-size: 10px; font-weight:700; color:rgba(255,255,255,0.75); text-transform:uppercase; letter-spacing:0.5px;">CLS Stability</span>
+                        <div style="display:flex; align-items:baseline; gap:3px;">
+                          <span style="font-size: 26px; font-weight:900; color:#FFFFFF; letter-spacing:-1px;">0.00</span>
+                          <span style="font-size: 10px; font-weight:700; color:#6EE7B7;">PERFECT</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="torn-divider"></div>
+                    <div class="metric-pane-white">
+                      <div class="metric-title">Layout Shifts Blocked</div>
+                      <div class="metric-big-num">14 <span style="font-size:13px; font-weight:600; color:#059669;">Jumps Frozen</span></div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ROW 2: Elements Locked & Bandwidth Saved -->
+                <div class="dash-split-card">
+                  <div class="graphic-pane-blue">
+                    <!-- Skeleton Placeholders Illustration -->
+                    <div style="display:flex; align-items:center; justify-content:space-around; width:100%; height:100%; padding: 0 12px;">
+                      <div style="width:42px; height:38px; border: 1.5px dashed #38BDF8; border-radius:6px; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(56,189,248,0.1);">
+                        <span style="font-size:11px; opacity:0.8;">&#x1F5BC;</span>
+                        <span style="font-size:7.5px; font-weight:700; color:#38BDF8;">HOLD</span>
+                      </div>
+                      <div style="width:42px; height:38px; border: 1.5px dashed #818CF8; border-radius:6px; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(129,140,248,0.1);">
+                        <span style="font-size:11px; opacity:0.8;">&#x25B6;</span>
+                        <span style="font-size:7.5px; font-weight:700; color:#818CF8;">TAP</span>
+                      </div>
+                      <div style="display:flex; flex-direction:column; gap:3px;">
+                        <div style="width:36px; height:4px; background:#38BDF8; border-radius:2px; opacity:0.6;"></div>
+                        <div style="width:24px; height:4px; background:#818CF8; border-radius:2px; opacity:0.6;"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="torn-divider"></div>
+                  <div class="metric-pane-speedo">
+                    <div>
+                      <div class="metric-title">Media Placeholders Locked</div>
+                      <div class="metric-big-num">28 <span style="font-size:12px; font-weight:600; color:#64748B;">Held</span></div>
+                    </div>
+                    <!-- Click-to-Load badge -->
+                    <div style="padding: 4px 8px; background:#F0F9FF; border: 1px solid #BAE6FD; border-radius: 8px; text-align:center;">
+                      <div style="font-size:8.5px; font-weight:700; color:#0284C7; text-transform:uppercase;">Click-to-Load</div>
+                      <div style="font-size:11px; font-weight:800; color:#0369A1;">Active</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ROW 3: Network Speed & Data Saved -->
+                <div class="dash-split-card">
+                  <div class="graphic-pane-coral">
+                    <div style="display:flex; align-items:center; gap:10px; height:100%; padding:0 14px;">
+                      <div style="width:32px; height:32px; border-radius:8px; background:#FEF3C7; border: 1px solid #FDE68A; display:flex; align-items:center; justify-content:center; color:#D97706; font-size:14px;">
+                        &#x1F4F6;
+                      </div>
+                      <div>
+                        <div style="font-size:9.5px; font-weight:700; color:#B45309; text-transform:uppercase;">Network Mode</div>
+                        <div style="font-size:13px; font-weight:800; color:#78350F;">Slow 3G &bull; 1.4 Mbps</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="torn-divider"></div>
+                  <div class="metric-pane-operational">
+                    <div class="metric-title">Data Saved (Media Deferred)</div>
+                    <div style="display:flex; align-items:baseline; gap:6px;">
+                      <div class="status-operational-text" style="color:#0284C7;">3.8 MB</div>
+                      <span style="font-size:11px; font-weight:700; color:#10B981;">&#x25B2; 3.2x Speedup</span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Interactive Feedback Toast -->
+  <div class="auth-toast" id="authToast">
+    <svg class="auth-toast-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+    </svg>
+    <span id="toastMsg">Welcome back! Signing in...</span>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const authCard = document.getElementById('authCard');
+      const imagePanel = document.getElementById('imagePanel');
+      const loginMockup = document.getElementById('loginMockup');
+      const signupMockup = document.getElementById('signupMockup');
+      const toSignupBtn = document.getElementById('toSignupBtn');
+      const toLoginBtn = document.getElementById('toLoginBtn');
+      const loginForm = document.getElementById('loginForm');
+      const signupForm = document.getElementById('signupForm');
+      const forgotPassBtn = document.getElementById('forgotPassBtn');
+      const authToast = document.getElementById('authToast');
+      const toastMsg = document.getElementById('toastMsg');
+      const themeToggleBtn = document.getElementById('themeToggleBtn');
+
+      // 1. Theme Management
+      function applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('skelio-theme', theme);
+      }
+
+      const savedTheme = localStorage.getItem('skelio-theme') || 'light';
+      applyTheme(savedTheme);
+
+      if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', () => {
+          const current = document.documentElement.getAttribute('data-theme');
+          applyTheme(current === 'dark' ? 'light' : 'dark');
+        });
+      }
+
+      // 2. Sliding Dual-Panel Transition
+      function setSignupMode(isSignup) {
+        if (isSignup) {
+          authCard.classList.add('signup-mode');
+          window.location.hash = 'signup';
+          document.title = 'Create Account - SkelIO';
+        } else {
+          authCard.classList.remove('signup-mode');
+          window.location.hash = 'login';
+          document.title = 'Login - SkelIO';
+        }
+      }
+
+      if (toSignupBtn) {
+        toSignupBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          setSignupMode(true);
+        });
+      }
+
+      if (toLoginBtn) {
+        toLoginBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          setSignupMode(false);
+        });
+      }
+
+      // Check initial URL hash
+      if (window.location.hash === '#signup' || window.location.hash === '#signin') {
+        setSignupMode(true);
+      } else {
+        setSignupMode(false);
+      }
+
+      window.addEventListener('hashchange', () => {
+        if (window.location.hash === '#signup' || window.location.hash === '#signin') {
+          setSignupMode(true);
+        } else {
+          setSignupMode(false);
+        }
+      });
+
+      // 3. Password Visibility Toggles
+      document.querySelectorAll('.toggle-pass-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const targetId = btn.dataset.target;
+          const input = document.getElementById(targetId);
+          if (!input) return;
+
+          const isPass = input.type === 'password';
+          input.type = isPass ? 'text' : 'password';
+
+          btn.innerHTML = isPass
+            ? `<svg viewBox="0 0 24 24" style="width:19px;height:19px;fill:currentColor;"><path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/></svg>`
+            : `<svg viewBox="0 0 24 24" style="width:19px;height:19px;fill:currentColor;"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>`;
+        });
+      });
+
+      // 4. Interactive 3D Parallax Tilt Effect
+      if (window.matchMedia('(hover: hover) and (pointer: fine)').matches && imagePanel) {
+        imagePanel.addEventListener('mousemove', (e) => {
+          const rect = imagePanel.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          
+          const centerX = rect.width / 2;
+          const centerY = rect.height / 2;
+          
+          const rotateX = ((y - centerY) / centerY) * -7;
+          const rotateY = ((x - centerX) / centerX) * 7;
+
+          const activeMockup = authCard.classList.contains('signup-mode') ? signupMockup : loginMockup;
+          if (activeMockup) {
+            activeMockup.style.transform = `perspective(1000px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) translateY(-2px)`;
+          }
+        });
+
+        imagePanel.addEventListener('mouseleave', () => {
+          [loginMockup, signupMockup].forEach(m => {
+            if (m) m.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) translateY(0px)';
+          });
+        });
+      }
+
+      // 5. Toast Feedback
+      let toastTimer = null;
+      function showToast(message) {
+        if (toastTimer) clearTimeout(toastTimer);
+        toastMsg.textContent = message;
+        authToast.classList.add('show');
+        toastTimer = setTimeout(() => {
+          authToast.classList.remove('show');
+        }, 3200);
+      }
+
+      // 6. Form Handlers
+      if (loginForm) {
+        loginForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const email = document.getElementById('loginEmail').value;
+          showToast(`Welcome back, ${email.split('@')[0]}! Logging in...`);
+          setTimeout(() => {
+            window.location.href = 'index.html';
+          }, 1800);
+        });
+      }
+
+      if (signupForm) {
+        signupForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const name = document.getElementById('signupName').value;
+          showToast(`Account created for ${name}! Redirecting...`);
+          setTimeout(() => {
+            window.location.href = 'index.html';
+          }, 1800);
+        });
+      }
+
+      if (forgotPassBtn) {
+        forgotPassBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          const email = document.getElementById('loginEmail').value;
+          if (email) {
+            showToast(`Password reset link sent to ${email}`);
+          } else {
+            showToast('Enter your email address above to reset password');
+            document.getElementById('loginEmail').focus();
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>

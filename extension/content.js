@@ -3,7 +3,7 @@
  * Pure DOM-based interception with CSS background-image skeletons
  * Sub-5ms geometry locking to eliminate CLS
  * 
- * Intercepts: img, video, iframe, audio, object, embed,
+ * Intercepts: img, video, audio, object, embed,
  *             picture/source, CSS background images, web fonts, link preloads
  */
 
@@ -26,11 +26,89 @@
   // Transparent 1x1 pixel - used as dummy src so broken image icon never shows
   const TRANSPARENT_PIXEL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
-  // Media element tags that get skeleton placeholders
-  const MEDIA_TARGETS = ['IMG', 'VIDEO', 'IFRAME', 'AUDIO', 'OBJECT', 'EMBED'];
+  // Media element tags that get skeleton placeholders (iframes excluded so embeds & auth frames are never blocked)
+  const MEDIA_TARGETS = ['IMG', 'VIDEO', 'AUDIO', 'OBJECT', 'EMBED'];
 
   // Lightweight modern system font stack used when web fonts are swapped
   const SYSTEM_FONT_STACK = '"Segoe UI Variable Display", "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif';
+
+  // ============================================================================
+  // WEBSITE ARCHETYPE DETECTION ENGINE
+  // Classifies websites into rendering profiles to prevent layout breaking & overlapping
+  // ============================================================================
+
+  const ARCHETYPES = {
+    EDITORIAL: 'EDITORIAL',         // Blogs, Wikipedia, Substack, Medium, news, documentation
+    INFINITE_FEED: 'INFINITE_FEED', // YouTube, Twitter/X, Reddit, Instagram, Pinterest, TikTok, LinkedIn
+    SCROLL_SHOWCASE: 'SCROLL_SHOWCASE', // Apple, Nike, Webflow showcases, Stripe, GSAP/Lenis parallax
+    RICH_APP: 'RICH_APP',           // Figma, Canva, Google Docs/Sheets/Maps, Notion, Miro, CAD/WebGL
+    STANDARD: 'STANDARD'            // General websites, e-commerce storefronts
+  };
+
+  let currentArchetype = ARCHETYPES.STANDARD;
+
+  function detectSiteArchetype() {
+    const host = (window.location.hostname || '').toLowerCase();
+
+    // Tier 1: Hostname signatures (instant 0ms fingerprinting for top platforms)
+    if (host.includes('figma.com') || host.includes('canva.com') || host.includes('docs.google.com') ||
+        host.includes('sheets.google.com') || host.includes('maps.google.com') || host.includes('notion.so') ||
+        host.includes('miro.com') || host.includes('slack.com') || host.includes('linear.app')) {
+      return ARCHETYPES.RICH_APP;
+    }
+
+    if (host.includes('youtube.com') || host.includes('twitter.com') || host.includes('x.com') ||
+        host.includes('reddit.com') || host.includes('instagram.com') || host.includes('pinterest.com') ||
+        host.includes('tiktok.com') || host.includes('linkedin.com')) {
+      return ARCHETYPES.INFINITE_FEED;
+    }
+
+    if (host.includes('c2c.sh') || host.includes('c2c.acmvit.in') || host.includes('apple.com') ||
+        host.includes('nike.com') || host.includes('stripe.com') || host.includes('webflow.io') ||
+        host.includes('awwwards.com') || host.includes('framer.website')) {
+      return ARCHETYPES.SCROLL_SHOWCASE;
+    }
+
+    if (host.includes('wikipedia.org') || host.includes('medium.com') || host.includes('substack.com') ||
+        host.includes('nytimes.com') || host.includes('theguardian.com') || host.includes('bbc.com') ||
+        host.includes('reuters.com') || host.includes('bloomberg.com') || host.includes('dev.to')) {
+      return ARCHETYPES.EDITORIAL;
+    }
+
+    // Tier 2: Structural DOM & rendering engine heuristics
+    try {
+      // Check for Rich Web Application (large full-screen canvas or role=application)
+      const hasAppRole = document.querySelector('[role="application"]');
+      const largeCanvas = document.querySelector('canvas#canvas, canvas[data-engine], .fullscreen-canvas');
+      if (hasAppRole || (largeCanvas && (largeCanvas.clientWidth > window.innerWidth * 0.7))) {
+        return ARCHETYPES.RICH_APP;
+      }
+
+      // Check for Scene Portals / Visual Showcases / Scrollytelling (c2c.sh, GSAP, Lenis, Locomotive)
+      const hasScenePortal = document.querySelector(
+        '[data-portal-scene], [data-scene], [class*="scene-"], [class*="-scene"], [id*="scene"], [class*="min-h-dvh"], [class*="min-h-screen"], [class*="overflow-clip"] [class*="pointer-events-none absolute"]'
+      );
+      const hasSceneStyles = document.querySelector('[style*="--scene"], [class*="--scene"], [class*="bg-[image:var"]');
+      const hasScrolly = document.querySelector('[data-scroll-container], [data-scroll-section], .lenis, [data-scroll], .sticky-wrapper, [class*="scrolltrigger"]');
+      if (hasScenePortal || hasSceneStyles || hasScrolly) {
+        return ARCHETYPES.SCROLL_SHOWCASE;
+      }
+
+      // Check for Virtualized Infinite Feeds
+      const hasFeed = document.querySelector('[data-virtualized], virtual-scroller, [data-testid*="tweet"], ytd-app, shreddit-app, [class*="infinite-scroll"]');
+      if (hasFeed) {
+        return ARCHETYPES.INFINITE_FEED;
+      }
+
+      // Check for Editorial / Article Content
+      const articleEl = document.querySelector('article, [itemprop="articleBody"], .post-content, .entry-content, .article-body');
+      if (articleEl && articleEl.querySelectorAll('p').length >= 3) {
+        return ARCHETYPES.EDITORIAL;
+      }
+    } catch (e) {}
+
+    return ARCHETYPES.STANDARD;
+  }
 
   // ============================================================================
   // NETWORK DETECTION & SPEED THRESHOLD
@@ -212,12 +290,24 @@
   // ============================================================================
 
   function lockElement(element) {
+    if (!element || element.tagName === 'IFRAME') return;
     if (!isActive || element.hasAttribute(SKELIO_ATTR) || element.hasAttribute(SKELIO_HYDRATED_ATTR)) {
       return;
     }
-    // Check if element is inside an already-hydrated card or container
-    if (element.closest && element.closest(`[${SKELIO_HYDRATED_ATTR}]`)) {
+    // Anti-Overlap Protection: Check if element or any ancestor is already locked or hydrated
+    if (element.closest && element.closest(`[${SKELIO_ATTR}], [${SKELIO_HYDRATED_ATTR}], [${SKELIO_BG_ATTR}]`)) {
       return;
+    }
+    // Anti-Overlap Protection: Check if element contains an already locked child (prevent nested double-skeletons)
+    if (element.querySelector && element.querySelector(`[${SKELIO_ATTR}], [${SKELIO_BG_ATTR}]`)) {
+      return;
+    }
+
+    // Archetype Guardrail: Rich Web Applications (Figma, Canva, Google Docs/Maps, Notion, CAD)
+    if (currentArchetype === ARCHETYPES.RICH_APP) {
+      if (element.closest('canvas, svg, [role="toolbar"], [role="menu"], [role="navigation"], [class*="toolbar"], [class*="toolbox"], [class*="palette"], [class*="layer"], [class*="panel"], aside, nav')) {
+        return;
+      }
     }
 
     const tag = element.tagName;
@@ -256,11 +346,18 @@
     // Get original source (prefer cached originalSrc if re-locking after deactivation)
     let originalSrc = element.dataset.skelioOriginalSrc;
     if (!originalSrc || originalSrc.startsWith('data:')) {
-      originalSrc = element.src || element.getAttribute('src') || element.currentSrc || element.dataset.src || element.dataset.thumb || element.data || element.poster;
+      originalSrc = element.getAttribute('src') || element.src || element.currentSrc ||
+                    element.getAttribute('data-src') || element.getAttribute('data-lazy-src') ||
+                    element.getAttribute('data-original') || element.getAttribute('data-orig') ||
+                    element.getAttribute('data-hi-res-src') || element.getAttribute('data-url') ||
+                    element.getAttribute('data-fallback-src') ||
+                    element.dataset.src || element.dataset.thumb || element.dataset.lazySrc ||
+                    element.dataset.original || element.data || element.poster;
     }
     if (tag === 'IMG' && (!originalSrc || originalSrc.startsWith('data:'))) {
-      if (element.srcset) {
-        const first = element.srcset.split(',')[0].trim().split(' ')[0];
+      const srcset = element.getAttribute('data-srcset') || element.srcset;
+      if (srcset) {
+        const first = srcset.split(',')[0].trim().split(' ')[0];
         if (first && !first.startsWith('data:')) originalSrc = first;
       }
     }
@@ -273,8 +370,20 @@
       }
     }
 
+    // Save lazy attributes before clearing so they can be restored upon hydration
+    if (element.getAttribute('data-src')) element.dataset.skelioDataSrc = element.getAttribute('data-src');
+    if (element.getAttribute('data-lazy-src')) element.dataset.skelioDataLazySrc = element.getAttribute('data-lazy-src');
+    if (element.getAttribute('data-original')) element.dataset.skelioDataOriginal = element.getAttribute('data-original');
+
     if (!originalSrc || (originalSrc.startsWith('data:') && !element.dataset.skelioOriginalSrc) || originalSrc.startsWith('blob:') || originalSrc.startsWith('about:')) {
       return;
+    }
+
+    // Normalize to fully qualified absolute URL so Declarative Net Request and background worker can match it accurately
+    if (!originalSrc.startsWith('data:') && !originalSrc.startsWith('blob:')) {
+      try {
+        originalSrc = new URL(originalSrc, window.location.href).href;
+      } catch (e) {}
     }
 
     // Track original inline geometry before applying locks
@@ -289,7 +398,6 @@
     let label = 'REMOVED BY SKELIO';
     if (tag === 'VIDEO') label = 'VIDEO BLOCKED';
     else if (tag === 'AUDIO') label = 'AUDIO BLOCKED';
-    else if (tag === 'IFRAME') label = 'IFRAME BLOCKED';
     else if (tag === 'OBJECT' || tag === 'EMBED') label = 'EMBED BLOCKED';
 
     const skeletonSVG = createSkeletonSVG(width, height, label);
@@ -303,23 +411,43 @@
     element.style.setProperty('height', height + 'px', 'important');
 
     const parentWidth = element.parentElement ? element.parentElement.clientWidth : window.innerWidth;
-    if (width <= parentWidth) {
-      element.style.setProperty('max-width', '100%', 'important');
+    const isScenicLayer = (
+      element.getAttribute('aria-hidden') === 'true' ||
+      isNaturallyPointerEventsNone ||
+      (element.className && typeof element.className === 'string' && (element.className.includes('max-w-none') || element.className.includes('w-[')))
+    );
+
+    if (!(currentArchetype === ARCHETYPES.SCROLL_SHOWCASE && isScenicLayer)) {
+      if (width <= parentWidth) {
+        element.style.setProperty('max-width', '100%', 'important');
+      }
     }
     if (compStyle.aspectRatio && compStyle.aspectRatio !== 'auto') {
       element.style.setProperty('aspect-ratio', compStyle.aspectRatio, 'important');
     }
 
+    // Archetype Strategy: Scroll showcases preserve pin context, infinite feeds isolate layout
     try {
       if (compStyle.display === 'inline') {
         element.style.setProperty('display', 'inline-block', 'important');
       }
-      // Only set relative if element was statically positioned, never break absolute/fixed/sticky positioning
-      if (compStyle.position === 'static') {
-        element.style.setProperty('position', 'relative', 'important');
+      if (currentArchetype === ARCHETYPES.SCROLL_SHOWCASE) {
+        // Preserve sticky/fixed/absolute positioning for GSAP & scroll-driven pins
+        if (compStyle.position === 'static') {
+          element.style.setProperty('position', 'relative', 'important');
+        }
+      } else {
+        if (compStyle.position === 'static') {
+          element.style.setProperty('position', 'relative', 'important');
+        }
       }
     } catch (e) {
       element.style.setProperty('display', 'inline-block', 'important');
+    }
+
+    if (currentArchetype === ARCHETYPES.INFINITE_FEED) {
+      // Isolate layout & paint so virtualized node recycling does not cause adjacent grid overlap
+      element.style.setProperty('contain', 'layout paint', 'important');
     }
 
     // Only set visibility/opacity if the element wasn't deliberately hidden by page timeline / scroll trigger
@@ -328,19 +456,25 @@
       element.style.setProperty('opacity', '1', 'important');
     }
 
-    element.style.setProperty('filter', 'none', 'important');
-    element.style.setProperty('mix-blend-mode', 'normal', 'important');
+    if (currentArchetype !== ARCHETYPES.SCROLL_SHOWCASE) {
+      element.style.setProperty('filter', 'none', 'important');
+      element.style.setProperty('mix-blend-mode', 'normal', 'important');
+    }
     element.style.setProperty('overflow', 'hidden', 'important');
     element.style.setProperty('box-sizing', 'border-box', 'important');
 
-    // If element is a decorative layer with pointer-events: none (e.g. hero-tree), NEVER intercept clicks!
+    // Always make locked elements interactive so clicks are received, saving previous state
     if (isNaturallyPointerEventsNone) {
+      element.dataset.skelioHadPointerEventsNone = 'true';
+    }
+    if (isScenicLayer && isNaturallyPointerEventsNone) {
+      // Preserve pointer-events: none so decorative background scenery does not intercept clicks to forms & controls
       element.style.setProperty('pointer-events', 'none', 'important');
     } else {
       element.style.setProperty('pointer-events', 'auto', 'important');
       element.style.setProperty('cursor', 'pointer', 'important');
-      element.style.setProperty('border-radius', '10px', 'important');
     }
+    element.style.setProperty('border-radius', '10px', 'important');
 
     // Skeleton via CSS background-image (page JS can't overwrite this)
     element.style.setProperty('background-image', `url("${skeletonSVG}")`, 'important');
@@ -392,9 +526,6 @@
         s.dataset.skelioSrc = s.src;
         s.removeAttribute('src');
       });
-
-    } else if (tag === 'IFRAME') {
-      element.srcdoc = `<!DOCTYPE html><html style="width:100%;height:100%;margin:0;padding:0;"><body style="margin:0;padding:0;width:100%;height:100%;background:#0F172A;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#F8FAFC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;cursor:pointer;user-select:none;"><div style="font-size:14px;font-weight:700;letter-spacing:0.4px;margin-bottom:6px;">IFRAME BLOCKED</div><div style="font-size:11px;font-weight:500;color:#94A3B8;">Click to load</div></body></html>`;
 
     } else if (tag === 'OBJECT') {
       element.dataset.skelioOriginalData = element.data;
@@ -469,16 +600,52 @@
     element.style.removeProperty('mix-blend-mode');
     element.style.removeProperty('position');
     element.style.removeProperty('z-index');
-    element.style.removeProperty('pointer-events');
+    if (element.dataset.skelioHadPointerEventsNone) {
+      element.style.setProperty('pointer-events', 'none', 'important');
+    } else {
+      element.style.removeProperty('pointer-events');
+    }
     element.style.removeProperty('overflow');
     if (!element.dataset.skelioHadInlineBorderRadius) {
       element.style.removeProperty('border-radius');
     }
 
-    // Await DNR allow rule before setting src so network engine permits the load
+    // Collect all URLs to unblock: originalSrc, element.srcset, and picture sources
+    const urlsToHydrate = new Set();
+    if (originalSrc) urlsToHydrate.add(originalSrc);
+
+    const ss = element.srcset || element.dataset.skelioOriginalSrcset || '';
+    if (ss) {
+      ss.split(',').forEach(part => {
+        const u = part.trim().split(' ')[0];
+        if (u && !u.startsWith('data:') && !u.startsWith('blob:')) {
+          try { urlsToHydrate.add(new URL(u, window.location.href).href); } catch (e) { urlsToHydrate.add(u); }
+        }
+      });
+    }
+
+    const picture = element.closest('picture');
+    if (picture) {
+      const sources = picture.querySelectorAll('source');
+      sources.forEach(source => {
+        const s = source.srcset || source.getAttribute('srcset') || '';
+        s.split(',').forEach(part => {
+          const u = part.trim().split(' ')[0];
+          if (u && !u.startsWith('data:') && !u.startsWith('blob:')) {
+            try { urlsToHydrate.add(new URL(u, window.location.href).href); } catch (e) { urlsToHydrate.add(u); }
+          }
+        });
+      });
+    }
+
+    // Await DNR allow rules for all associated URLs before setting src
     try {
-      await sendToBackground({ action: 'HYDRATE_URL', url: originalSrc });
-    } catch (e) {}
+      await sendToBackground({ action: 'HYDRATE_URLS', urls: Array.from(urlsToHydrate) });
+    } catch (e) {
+      try {
+        await sendToBackground({ action: 'HYDRATE_URL', url: originalSrc });
+      } catch (e2) {}
+    }
 
     // Support YouTube and custom web component image containers
     const ytShadow = element.closest && element.closest('yt-img-shadow, yt-image, [id="thumbnail"]');
@@ -490,7 +657,6 @@
 
     if (tag === 'IMG') {
       // Restore <picture> <source> srcsets
-      const picture = element.closest('picture');
       if (picture && element.dataset.skelioPictureSrcsets) {
         try {
           const srcsets = JSON.parse(element.dataset.skelioPictureSrcsets);
@@ -506,31 +672,35 @@
         element.srcset = element.dataset.skelioOriginalSrcset;
       }
 
+      // Restore lazy loading attributes so lazy-load scripts recognize the element
+      if (element.dataset.skelioDataSrc) {
+        element.setAttribute('data-src', element.dataset.skelioDataSrc);
+      }
+      if (element.dataset.skelioDataLazySrc) {
+        element.setAttribute('data-lazy-src', element.dataset.skelioDataLazySrc);
+      }
+      if (element.dataset.skelioDataOriginal) {
+        element.setAttribute('data-original', element.dataset.skelioDataOriginal);
+      }
+
       element.onload = () => {
         element.style.setProperty('opacity', '1', 'important');
         element.title = '';
       };
       element.onerror = () => {
         element.style.setProperty('opacity', '1', 'important');
-        element.title = 'Failed to load';
-        // Cache buster + blob fetch fallback in case browser cached the DNR block error
+        // If image failed to load with originalSrc (e.g. browser negative cache), try cache-busting URL
         const sep = originalSrc.includes('?') ? '&' : '?';
         const cacheBustSrc = originalSrc + sep + 'skelio_cb=' + Date.now();
-        fetch(cacheBustSrc)
-          .then(r => r.blob())
-          .then(blob => {
-            element.src = URL.createObjectURL(blob);
-          })
-          .catch(() => {
-            fetch(originalSrc)
-              .then(r => r.blob())
-              .then(blob => {
-                element.src = URL.createObjectURL(blob);
-              })
-              .catch(() => {});
-          });
+        if (element.src !== cacheBustSrc) {
+          element.src = cacheBustSrc;
+        }
       };
+
       element.src = originalSrc;
+      element.classList.remove('lazyload');
+      element.classList.add('lazyloaded');
+      element.dispatchEvent(new Event('load', { bubbles: true }));
 
     } else if (tag === 'VIDEO') {
       element.removeAttribute('poster');
@@ -797,6 +967,92 @@
   }
 
   // ============================================================================
+  // TRANSLUCENT UI SIMPLIFIER
+  // Strips GPU-heavy backdrop blur, frosted glass, and translucent overlays
+  // replacing them with clean, crisp, solid-contrast surfaces
+  // ============================================================================
+
+  let translucentStyleEl = null;
+
+  function removeTranslucentUI() {
+    if (!document.head && !document.documentElement) {
+      requestAnimationFrame(removeTranslucentUI);
+      return;
+    }
+
+    if (!translucentStyleEl) {
+      translucentStyleEl = document.createElement('style');
+      translucentStyleEl.id = 'skelio-translucent-simplifier';
+      (document.body || document.documentElement || document.head).appendChild(translucentStyleEl);
+    }
+
+    // Detect dark theme
+    const isDark = (
+      document.documentElement.getAttribute('data-theme') === 'dark' ||
+      document.documentElement.classList.contains('dark') ||
+      document.body?.classList?.contains('dark') ||
+      (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+    );
+
+    const solidCardBg = isDark ? '#1E1B2E' : '#FFFFFF';
+    const solidCardActiveBg = isDark ? '#2D2744' : '#F8FAFC';
+    const solidBorder = isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.12)';
+
+    translucentStyleEl.textContent = `
+      /* Universal Translucent UI Removal (Zero GPU Compositing Blur) */
+      html, html body, html body * {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        --tw-backdrop-blur: none !important;
+        --tw-backdrop-brightness: none !important;
+        --tw-backdrop-contrast: none !important;
+        --tw-backdrop-grayscale: none !important;
+        --tw-backdrop-hue-rotate: none !important;
+        --tw-backdrop-invert: none !important;
+        --tw-backdrop-opacity: none !important;
+        --tw-backdrop-saturate: none !important;
+        --tw-backdrop-sepia: none !important;
+      }
+
+      /* Solidify glassmorphic UI elements (cards, tiles, navigation, modals, dropdowns) */
+      button.glass-tile, button[class*="glass"],
+      .glass, .glass-tile, .glass-menu, .glass-active,
+      [class*="glass-"], [class*="glass_"], [class*="-glass"],
+      [class*="glassmorphism"], [class*="glass-card"], [class*="glass-panel"],
+      [class*="backdrop-blur"], [class*="backdrop-filter"],
+      nav[class*="backdrop"], header[class*="backdrop"],
+      nav[class*="glass"], header[class*="glass"] {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        background-image: none !important;
+        background-color: ${solidCardBg} !important;
+        border-color: ${solidBorder} !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+      }
+
+      /* Portal scene and design system CSS variable overrides (e.g. c2c.sh, Tailwind) */
+      :root, [data-theme] {
+        --petal-card-bg: ${solidCardBg} !important;
+        --tile-bg: ${solidCardBg} !important;
+        --tile-bg-active: ${solidCardActiveBg} !important;
+        --sheet-bg: ${solidCardBg} !important;
+        --roster-bg: ${solidCardBg} !important;
+        --confirm-bg: ${solidCardBg} !important;
+      }
+    `;
+
+    console.log('[SkelIO] Translucent UI removed -> solid high-contrast surfaces enabled');
+  }
+
+  function restoreTranslucentUI() {
+    if (translucentStyleEl) {
+      translucentStyleEl.remove();
+      translucentStyleEl = null;
+      console.log('[SkelIO] Translucent UI restored');
+    }
+  }
+
+  // ============================================================================
   // CSS BACKGROUND IMAGE INTERCEPTION
   // ============================================================================
 
@@ -807,7 +1063,8 @@
 
     let count = 0;
     for (let i = 0; i < candidates.length && count < 20; i++) {
-      if (el.hasAttribute(SKELIO_BG_ATTR)) continue;
+      const el = candidates[i];
+      if (!el || el.hasAttribute(SKELIO_BG_ATTR)) continue;
       if (EXCLUDED_TAGS.includes(el.tagName)) continue;
       // Skip interactive elements, accordions, buttons, cards, or non-interactive parallax layers
       if (el.hasAttribute('role') || el.hasAttribute('aria-expanded') || el.hasAttribute('aria-controls')) continue;
@@ -904,28 +1161,42 @@
     const target = e.target;
     if (!target) return;
 
-    // NEVER intercept clicks on interactive form inputs, buttons, menus, dropdowns, links, or options
-    if (target.closest && target.closest('input, textarea, select, option, label, button, [role="button"], [role="tab"], [role="menuitem"], [role="option"], a[href]')) {
-      // Allow click through unless the target itself is explicitly the locked media skeleton
-      if (!target.hasAttribute(SKELIO_ATTR) && !target.hasAttribute(SKELIO_BG_ATTR)) {
-        return;
-      }
-    }
-
-    // 1. Target itself is locked
+    // 1. Direct match: target is locked
     let lockedEl = (target.hasAttribute && target.hasAttribute(SKELIO_ATTR)) ? target : null;
 
-    // 2. Child of a locked element
+    // 2. Target is inside a locked element
     if (!lockedEl && target.closest) {
       lockedEl = target.closest(`[${SKELIO_ATTR}]`);
     }
 
-    // 3. Background image lock
+    // 3. Target is an overlay, badge, or container over a locked element
+    if (!lockedEl && target.querySelector) {
+      lockedEl = target.querySelector(`[${SKELIO_ATTR}]`);
+    }
+
+    // 4. Target is a sibling of a locked element inside a shared thumbnail/card wrapper
+    if (!lockedEl && target.parentElement) {
+      lockedEl = target.parentElement.querySelector(`[${SKELIO_ATTR}]`);
+    }
+
+    // 5. Target is inside a picture wrapper
+    if (!lockedEl && target.closest && target.closest('picture')) {
+      lockedEl = target.closest('picture').querySelector(`[${SKELIO_ATTR}]`);
+    }
+
+    // Background image lock check
     let bgLockedEl = (target.hasAttribute && target.hasAttribute(SKELIO_BG_ATTR)) ? target : null;
     if (!bgLockedEl && target.closest) {
       bgLockedEl = target.closest(`[${SKELIO_BG_ATTR}]`);
     }
+    if (!bgLockedEl && target.querySelector) {
+      bgLockedEl = target.querySelector(`[${SKELIO_BG_ATTR}]`);
+    }
+    if (!bgLockedEl && target.parentElement) {
+      bgLockedEl = target.parentElement.querySelector(`[${SKELIO_BG_ATTR}]`);
+    }
 
+    // If an actual locked element or background was clicked:
     if (lockedEl && lockedEl.hasAttribute(SKELIO_ATTR)) {
       e.preventDefault();
       e.stopPropagation();
@@ -970,6 +1241,38 @@
 
   function setupObserver() {
     observer = new MutationObserver((mutations) => {
+      // Dynamic SPA Archetype Re-evaluation:
+      // Single Page Applications (React, Next.js, Vite, Vue) start as empty shells (<div id="root"></div>)
+      // Once components mount into the DOM, re-evaluate archetype from STANDARD to actual profile
+      if (currentArchetype === ARCHETYPES.STANDARD) {
+        const updatedArchetype = detectSiteArchetype();
+        if (updatedArchetype !== ARCHETYPES.STANDARD) {
+          currentArchetype = updatedArchetype;
+          try {
+            document.documentElement.setAttribute('data-skelio-archetype', currentArchetype);
+          } catch (e) {}
+          console.log(`[SkelIO] SPA mounted -> Upgraded archetype to: ${currentArchetype}`);
+
+          if (currentArchetype === ARCHETYPES.SCROLL_SHOWCASE) {
+            // Unsquish any scenic backdrop layers that were locked under standard mode
+            const lockedElements = document.querySelectorAll(`[${SKELIO_ATTR}]`);
+            lockedElements.forEach(el => {
+              const isScenic = (
+                el.getAttribute('aria-hidden') === 'true' ||
+                el.dataset.skelioHadPointerEventsNone === 'true' ||
+                (el.className && typeof el.className === 'string' && (el.className.includes('max-w-none') || el.className.includes('w-[')))
+              );
+              if (isScenic) {
+                el.style.removeProperty('max-width');
+                if (el.dataset.skelioHadPointerEventsNone === 'true') {
+                  el.style.setProperty('pointer-events', 'none', 'important');
+                }
+              }
+            });
+          }
+        }
+      }
+
       for (const mutation of mutations) {
         if (mutation.type === 'childList') {
           for (const node of mutation.addedNodes) {
@@ -1131,7 +1434,12 @@
   async function activateSkelIO() {
     if (isActive) return;
 
-    console.log('[SkelIO] Activating...');
+    currentArchetype = detectSiteArchetype();
+    try {
+      document.documentElement.setAttribute('data-skelio-archetype', currentArchetype);
+    } catch (e) {}
+
+    console.log(`[SkelIO] Activating with archetype: ${currentArchetype} (${window.location.hostname})...`);
     isActive = true;
 
     // Clear previous hydrated flags
@@ -1148,6 +1456,9 @@
     // Simplify 3D websites: replace GPU-heavy 3D backgrounds with contrasting flat backgrounds
     simplify3DWebsites();
 
+    // Remove translucent UI: strip GPU-heavy backdrop-filter blur and frosted glass overlays
+    removeTranslucentUI();
+
     // Lock existing elements
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', lockExistingElements, { once: true });
@@ -1158,7 +1469,7 @@
     // Setup observer for dynamically added elements
     setupObserver();
 
-    console.log('[SkelIO] Activated successfully');
+    console.log(`[SkelIO] Activated successfully [Profile: ${currentArchetype}]`);
   }
 
   async function deactivateSkelIO() {
@@ -1166,6 +1477,9 @@
 
     console.log('[SkelIO] Deactivating...');
     isActive = false;
+    try {
+      document.documentElement.removeAttribute('data-skelio-archetype');
+    } catch (e) {}
 
     // Disconnect MutationObserver
     if (observer) {
@@ -1178,6 +1492,9 @@
 
     // Restore 3D backgrounds
     restore3DWebsites();
+
+    // Restore translucent UI
+    restoreTranslucentUI();
 
     // Hydrate all currently locked elements
     const lockedElements = document.querySelectorAll(`[${SKELIO_ATTR}]`);
@@ -1262,9 +1579,11 @@
     } else if (message.action === 'SKELIO_TOGGLE_3D') {
       if (threeDStyleEl) {
         restore3DWebsites();
+        restoreTranslucentUI();
         sendResponse({ simplified: false });
       } else {
         simplify3DWebsites();
+        removeTranslucentUI();
         sendResponse({ simplified: true });
       }
     } else if (message.action === 'SKELIO_HYDRATE_ALL') {

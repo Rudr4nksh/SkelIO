@@ -127,7 +127,8 @@ async function activateSkelIO(tabId) {
 /**
  * HYDRATE_URL: Allow a specific URL to load on a tab (high-priority allow rule)
  */
-async function hydrateURL(url, tabId) {
+async function hydrateURLs(urls, tabId) {
+  if (!urls || urls.length === 0) return { success: true };
   let tabData = activeTabs.get(tabId);
   if (!tabData) {
     const blockRuleId = generateBlockRuleId(tabId);
@@ -139,36 +140,44 @@ async function hydrateURL(url, tabId) {
     activeTabs.set(tabId, tabData);
   }
 
-  const allowRuleId = generateAllowRuleId(tabId, tabData.allowRuleCounter);
-  tabData.allowRuleCounter++;
+  const rulesToAdd = [];
+  const domainHosts = new Set();
 
-  // Build a safe ASCII filter pattern without volatile query params
-  let filterPattern = url;
-  let domainHost = null;
-  try {
-    const u = new URL(url);
-    domainHost = u.hostname;
-    // Matching origin + pathname with wildcard matches the asset across any query parameters
-    filterPattern = `${u.origin}${u.pathname}*`;
-  } catch (e) {
-    filterPattern = url.split('?')[0] + '*';
+  for (const rawUrl of urls) {
+    if (!rawUrl || typeof rawUrl !== 'string') continue;
+    if (rawUrl.startsWith('data:') || rawUrl.startsWith('blob:')) continue;
+
+    const allowRuleId = generateAllowRuleId(tabId, tabData.allowRuleCounter++);
+    tabData.allowRuleIds.add(allowRuleId);
+
+    let filterPattern = rawUrl;
+    try {
+      const u = new URL(rawUrl);
+      if (u.hostname && !u.hostname.includes('localhost') && u.hostname.length > 3) {
+        domainHosts.add(u.hostname);
+      }
+      // Matching origin + pathname with wildcard matches across volatile query parameters
+      filterPattern = `${u.origin}${u.pathname}*`;
+    } catch (e) {
+      filterPattern = rawUrl.split('?')[0] + '*';
+    }
+
+    rulesToAdd.push({
+      id: allowRuleId,
+      priority: 10,
+      action: { type: 'allow' },
+      condition: {
+        tabIds: [tabId],
+        urlFilter: filterPattern,
+        resourceTypes: ['image', 'media', 'font', 'xmlhttprequest']
+      }
+    });
   }
 
-  const allowRule = {
-    id: allowRuleId,
-    priority: 10, // Higher priority than block rule
-    action: { type: 'allow' },
-    condition: {
-      tabIds: [tabId],
-      urlFilter: filterPattern,
-      resourceTypes: ['image', 'media', 'font']
-    }
-  };
-
-  const rulesToAdd = [allowRule];
-  if (domainHost) {
-    const domainRuleId = generateAllowRuleId(tabId, tabData.allowRuleCounter);
-    tabData.allowRuleCounter++;
+  // Also add domain-level allow rules for each domain involved (helps srcset, CDNs, & responsive variants)
+  for (const domainHost of domainHosts) {
+    const domainRuleId = generateAllowRuleId(tabId, tabData.allowRuleCounter++);
+    tabData.allowRuleIds.add(domainRuleId);
     rulesToAdd.push({
       id: domainRuleId,
       priority: 9,
@@ -176,11 +185,12 @@ async function hydrateURL(url, tabId) {
       condition: {
         tabIds: [tabId],
         requestDomains: [domainHost],
-        resourceTypes: ['image', 'media', 'font']
+        resourceTypes: ['image', 'media', 'font', 'xmlhttprequest']
       }
     });
-    tabData.allowRuleIds.add(domainRuleId);
   }
+
+  if (rulesToAdd.length === 0) return { success: true };
 
   try {
     await chrome.declarativeNetRequest.updateSessionRules({
@@ -188,39 +198,21 @@ async function hydrateURL(url, tabId) {
       removeRuleIds: []
     });
 
-    tabData.allowRuleIds.add(allowRuleId);
-
-    // Update bandwidth saved stats (estimate ~500KB per media asset)
     const data = await chrome.storage.local.get(['totalBandwidthSaved']);
     await chrome.storage.local.set({
-      totalBandwidthSaved: (data.totalBandwidthSaved || 0) + 500000
+      totalBandwidthSaved: (data.totalBandwidthSaved || 0) + (500000 * Math.max(1, urls.length))
     });
 
-    console.log(`[SkelIO] Hydrated ${filterPattern} (host: ${domainHost}) on tab ${tabId}`);
+    console.log(`[SkelIO] Hydrated ${urls.length} asset URLs on tab ${tabId}`);
     return { success: true };
   } catch (err) {
-    console.warn(`[SkelIO] Standard allow rule failed for ${url}, trying domain fallback:`, err);
-    if (domainHost) {
-      try {
-        await chrome.declarativeNetRequest.updateSessionRules({
-          addRules: [{
-            id: allowRuleId,
-            priority: 10,
-            action: { type: 'allow' },
-            condition: {
-              tabIds: [tabId],
-              requestDomains: [domainHost],
-              resourceTypes: ['image', 'media', 'font']
-            }
-          }],
-          removeRuleIds: []
-        });
-        tabData.allowRuleIds.add(allowRuleId);
-        return { success: true };
-      } catch (e2) {}
-    }
+    console.warn(`[SkelIO] Failed to add allow rules in batch:`, err);
     return { success: false, error: err.message };
   }
+}
+
+async function hydrateURL(url, tabId) {
+  return hydrateURLs([url], tabId);
 }/**
  * ALLOW_FONTS: Lift font blocking on a tab so custom web fonts can load
  */
@@ -394,6 +386,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return false;
       }
       hydrateURL(message.url, tabId).then(sendResponse);
+      return true;
+
+    case 'HYDRATE_URLS':
+      if (!message.urls || !Array.isArray(message.urls)) {
+        sendResponse({ success: false, error: 'No URLs provided' });
+        return false;
+      }
+      hydrateURLs(message.urls, tabId).then(sendResponse);
       return true;
 
     case 'DEACTIVATE_SKELIO':
