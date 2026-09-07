@@ -1369,8 +1369,97 @@
   }
 
   // ============================================================================
-  // STATS
+  // PRECISE BANDWIDTH & PERFORMANCE IMPACT CALCULATOR
+  // Dynamic calculation based on physical geometry, display density, media type,
+  // and asynchronous Content-Length HTTP header verification (zero-body HEAD queries)
   // ============================================================================
+
+  function calculateElementSavings(element, isBg = false) {
+    if (!element) return 0;
+
+    // 1. If exact size was already resolved from Content-Length or prior calculation
+    if (element.dataset.skelioSavedBytes) {
+      const val = parseInt(element.dataset.skelioSavedBytes, 10);
+      if (!isNaN(val) && val > 0) return val;
+    }
+
+    const tag = element.tagName;
+    const rawSrc = element.dataset.skelioOriginalSrc || element.getAttribute('src') || element.dataset.skelioOriginalBg || '';
+    const src = rawSrc.toLowerCase();
+
+    // 2. Measure actual rendered geometry
+    const rect = element.getBoundingClientRect ? element.getBoundingClientRect() : { width: 0, height: 0 };
+    let width = Math.round(rect.width || parseInt(element.width, 10) || parseInt(element.style?.width, 10) || 0);
+    let height = Math.round(rect.height || parseInt(element.height, 10) || parseInt(element.style?.height, 10) || 0);
+
+    // If dimensions are collapsed (e.g. before initial paint or off-screen), use element attributes or sensible defaults
+    if (width <= 0) width = parseInt(element.getAttribute('width'), 10) || 320;
+    if (height <= 0) height = parseInt(element.getAttribute('height'), 10) || 240;
+
+    // Device Pixel Ratio (e.g. 1.5x on Windows scaling, 2x on Retina)
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    const physicalPixels = Math.max(1, width * height * (dpr * dpr));
+
+    let bytes = 0;
+
+    // Video media (<video>, <source>, .mp4, .webm)
+    if (tag === 'VIDEO' || src.includes('.mp4') || src.includes('.webm')) {
+      if (width >= 1200 || height >= 720) {
+        bytes = 2450000; // ~2.45 MB (Full HD web loop)
+      } else if (width >= 600 || height >= 400) {
+        bytes = 1250000; // ~1.25 MB (standard web video player)
+      } else {
+        bytes = 650000;  // ~650 KB (small preview/clip)
+      }
+    }
+    // Audio media
+    else if (tag === 'AUDIO' || src.includes('.mp3') || src.includes('.wav') || src.includes('.ogg')) {
+      bytes = 350000; // ~350 KB
+    }
+    // Vector SVG
+    else if (src.endsWith('.svg') || src.includes('.svg?') || src.startsWith('data:image/svg')) {
+      bytes = Math.max(1500, Math.min(35000, Math.round(width * height * 0.04)));
+    }
+    // Animated GIF
+    else if (src.endsWith('.gif') || src.includes('.gif?')) {
+      bytes = Math.max(120000, Math.min(4200000, Math.round(physicalPixels * 0.85)));
+    }
+    // Standard Raster Web Images (JPEG, WebP, PNG, AVIF) & CSS Backgrounds
+    else {
+      // Calibrated compression curve:
+      // - Micro icons / badges (< 60px): 0.42 bytes/pixel (~1.2 KB - 6 KB)
+      // - Thumbnails (60px - 250px): 0.32 bytes/pixel (~10 KB - 55 KB)
+      // - Standard content (250px - 700px): 0.25 bytes/pixel (~75 KB - 280 KB)
+      // - Large hero banners (> 700px): 0.20 bytes/pixel (~300 KB - 1.8 MB)
+      let factor = 0.25;
+      if (width < 60 && height < 60) {
+        factor = 0.42;
+      } else if (width > 700 || height > 500) {
+        factor = 0.20;
+      } else if (width <= 250) {
+        factor = 0.32;
+      }
+
+      bytes = Math.round(physicalPixels * factor);
+      bytes = Math.max(1200, Math.min(4500000, bytes));
+    }
+
+    element.dataset.skelioSavedBytes = String(bytes);
+
+    // Asynchronously query background worker for exact Content-Length if URL is valid http/https
+    const fullUrl = element.dataset.skelioOriginalSrc;
+    if (fullUrl && (fullUrl.startsWith('http://') || fullUrl.startsWith('https://')) && !element.dataset.skelioQueriedCl) {
+      element.dataset.skelioQueriedCl = 'true';
+      sendToBackground({ action: 'GET_RESOURCE_SIZE', url: fullUrl }).then(res => {
+        if (res && res.success && res.size > 0) {
+          element.dataset.skelioSavedBytes = String(res.size);
+          syncStats();
+        }
+      }).catch(() => {});
+    }
+
+    return bytes;
+  }
 
   let statsSyncTimer = null;
 
@@ -1378,12 +1467,22 @@
     if (statsSyncTimer) clearTimeout(statsSyncTimer);
     statsSyncTimer = setTimeout(async () => {
       try {
-        const lockedEls = document.querySelectorAll(`[${SKELIO_ATTR}]`).length;
-        const lockedBgs = document.querySelectorAll(`[${SKELIO_BG_ATTR}]`).length;
+        const lockedEls = document.querySelectorAll(`[${SKELIO_ATTR}]`);
+        const lockedBgs = document.querySelectorAll(`[${SKELIO_BG_ATTR}]`);
         const extras = (fontStyleEl ? 1 : 0) + (threeDStyleEl ? 1 : 0);
-        const currentPageBlocked = lockedEls + lockedBgs + extras;
-        const currentPageShifts = lockedEls + lockedBgs;
-        const bandwidthPerItem = 480000; // ~480 KB saved per media/3D resource
+        const currentPageBlocked = lockedEls.length + lockedBgs.length + extras;
+        const currentPageShifts = lockedEls.length + lockedBgs.length;
+
+        // Calculate precision bandwidth saved from all locked elements
+        let currentPageBandwidth = 0;
+        lockedEls.forEach(el => {
+          currentPageBandwidth += calculateElementSavings(el, false);
+        });
+        lockedBgs.forEach(el => {
+          currentPageBandwidth += calculateElementSavings(el, true);
+        });
+        if (fontStyleEl) currentPageBandwidth += 140000; // ~140 KB saved for custom web fonts
+        if (threeDStyleEl) currentPageBandwidth += 2800000; // ~2.8 MB saved for 3D/WebGL meshes & shaders
 
         const data = await chrome.storage.local.get([
           'layoutShiftsPrevented',
@@ -1394,14 +1493,21 @@
 
         const totalBlocked = Math.max(data.totalBlockedResources || 0, blockedResourcesCount, currentPageBlocked);
         const totalShifts = Math.max(data.layoutShiftsPrevented || 0, layoutShiftsPrevented, currentPageShifts);
-        const totalBandwidth = Math.max(data.totalBandwidthSaved || 0, totalBlocked * bandwidthPerItem);
+        const totalBandwidth = Math.max(data.totalBandwidthSaved || 0, currentPageBandwidth);
 
         // Record real per-website tracking for SkelIO Dashboard
-        const domain = window.location.hostname.replace(/^www\./, '');
+        let domain = window.location.hostname.replace(/^www\./, '');
+        if (!domain) {
+          if (window.location.protocol === 'file:') {
+            domain = window.location.pathname.split('/').pop() || 'local-preview';
+          }
+        }
+
+        const isSkelIOPages = window.location.href.includes('dashboard.html') || window.location.href.includes('login.html');
         const domainStats = data.skelio_domain_stats || {};
-        if (domain && domain !== 'localhost' && !domain.includes('127.0.0.1')) {
-          const pageSaved = currentPageBlocked * bandwidthPerItem;
-          let pageTransferred = 350000;
+
+        if (domain && !isSkelIOPages) {
+          let pageTransferred = 450000;
           try {
             const entries = performance.getEntriesByType('resource');
             if (entries && entries.length > 0) {
@@ -1410,23 +1516,28 @@
             }
           } catch (e) {}
 
-          const potential = pageTransferred + pageSaved;
+          const potential = pageTransferred + currentPageBandwidth;
           domainStats[domain] = {
             domain: domain,
             archetype: currentArchetype || 'STANDARD',
             blocked: Math.max(domainStats[domain]?.blocked || 0, currentPageBlocked),
             shifts: Math.max(domainStats[domain]?.shifts || 0, currentPageShifts),
-            bandwidthSaved: Math.max(domainStats[domain]?.bandwidthSaved || 0, pageSaved),
+            bandwidthSaved: Math.max(domainStats[domain]?.bandwidthSaved || 0, currentPageBandwidth),
             potentialBytes: Math.max(domainStats[domain]?.potentialBytes || 0, potential),
             actualBytes: pageTransferred,
             lastUpdated: Date.now()
           };
         }
 
-        // Bridge to web page localStorage if on SkelIO website
+        // Bridge directly to SkelIO website localStorage if on SkelIO website
         try {
           if (window.location.href.includes('dashboard.html') || window.location.href.includes('index.html')) {
             window.localStorage.setItem('skelio_domain_stats', JSON.stringify(domainStats));
+            window.localStorage.setItem('skelio_total_bandwidth', String(totalBandwidth));
+            window.localStorage.setItem('skelio_total_shifts', String(totalShifts));
+            window.localStorage.setItem('skelio_total_blocked', String(totalBlocked));
+            window.postMessage({ type: 'SKELIO_STATS_UPDATED', domainStats, totalBandwidth, totalShifts }, '*');
+            if (typeof window.loadRealData === 'function') window.loadRealData();
           }
         } catch (e) {}
 
@@ -1436,7 +1547,7 @@
           totalBandwidthSaved: totalBandwidth,
           pageBlocked: currentPageBlocked,
           pageShifts: currentPageShifts,
-          pageBandwidth: currentPageBlocked * bandwidthPerItem,
+          pageBandwidth: currentPageBandwidth,
           skelio_domain_stats: domainStats
         });
       } catch (err) {}
@@ -1445,6 +1556,15 @@
 
   function updateStats() {
     syncStats();
+  }
+
+  // Auto-record domain stats on page load
+  if (typeof window !== 'undefined') {
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        syncStats();
+      }, 500);
+    });
   }
 
   // ============================================================================
@@ -1474,6 +1594,9 @@
               skelio_website_url: window.location.href
             });
           }
+        } else if (href.includes('login.html') || href.includes('dashboard.html')) {
+          // If website has no profile stored on login or dashboard, ensure extension storage is cleared too
+          chrome.storage.local.remove(['skelio_user_profile']);
         }
 
         const domainStatsStr = window.localStorage.getItem('skelio_domain_stats');
@@ -1492,7 +1615,16 @@
     // 2. Sync from Extension Chrome Storage -> Page LocalStorage
     function pushToPage() {
       try {
-        chrome.storage.local.get(['skelio_user_profile', 'skelio_domain_stats'], (data) => {
+        // NEVER resurrect a profile into login.html — login page is for signing in/up
+        if (href.includes('login.html')) return;
+
+        chrome.storage.local.get([
+          'skelio_user_profile',
+          'skelio_domain_stats',
+          'totalBandwidthSaved',
+          'layoutShiftsPrevented',
+          'totalBlockedResources'
+        ], (data) => {
           if (!data) return;
           if (data.skelio_user_profile && !window.localStorage.getItem('skelio_user_profile')) {
             window.localStorage.setItem('skelio_user_profile', JSON.stringify(data.skelio_user_profile));
@@ -1502,8 +1634,18 @@
             const localStats = JSON.parse(window.localStorage.getItem('skelio_domain_stats') || '{}');
             const merged = Object.assign({}, localStats, data.skelio_domain_stats);
             window.localStorage.setItem('skelio_domain_stats', JSON.stringify(merged));
-            if (typeof window.loadRealData === 'function') window.loadRealData();
           }
+          if (data.totalBandwidthSaved !== undefined) {
+            window.localStorage.setItem('skelio_total_bandwidth', String(data.totalBandwidthSaved));
+          }
+          if (data.layoutShiftsPrevented !== undefined) {
+            window.localStorage.setItem('skelio_total_shifts', String(data.layoutShiftsPrevented));
+          }
+          if (data.totalBlockedResources !== undefined) {
+            window.localStorage.setItem('skelio_total_blocked', String(data.totalBlockedResources));
+          }
+          window.postMessage({ type: 'SKELIO_STATS_UPDATED' }, '*');
+          if (typeof window.loadRealData === 'function') window.loadRealData();
         });
       } catch (e) {}
     }
@@ -1525,6 +1667,8 @@
         try {
           chrome.storage.local.remove(['skelio_user_profile']);
         } catch (e) {}
+      } else if (event.data.type === 'SKELIO_REQUEST_SYNC') {
+        pushToPage();
       }
     });
 
@@ -1539,6 +1683,16 @@
       }
     });
 
+    document.addEventListener('SKELIO_PROFILE_LOGOUT', () => {
+      try {
+        chrome.storage.local.remove(['skelio_user_profile']);
+      } catch (e) {}
+    });
+
+    document.addEventListener('SKELIO_REQUEST_SYNC', () => {
+      pushToPage();
+    });
+
     // 4. Listen to extension storage updates to reflect in page immediately
     try {
       chrome.storage.onChanged.addListener((changes, area) => {
@@ -1546,10 +1700,14 @@
           if (changes.skelio_user_profile) {
             if (changes.skelio_user_profile.newValue) {
               window.localStorage.setItem('skelio_user_profile', JSON.stringify(changes.skelio_user_profile.newValue));
+              if (typeof window.loadUserProfile === 'function') window.loadUserProfile();
             } else {
               window.localStorage.removeItem('skelio_user_profile');
+              document.documentElement.removeAttribute('data-skelio-profile');
+              if (href.includes('dashboard.html')) {
+                window.location.href = 'login.html';
+              }
             }
-            if (typeof window.loadUserProfile === 'function') window.loadUserProfile();
           }
           if (changes.skelio_domain_stats && changes.skelio_domain_stats.newValue) {
             window.localStorage.setItem('skelio_domain_stats', JSON.stringify(changes.skelio_domain_stats.newValue));
@@ -1677,12 +1835,21 @@
       deactivateSkelIO();
       sendResponse({ success: true, active: isActive });
     } else if (message.action === 'SKELIO_STATUS') {
-      const lockedEls = document.querySelectorAll(`[${SKELIO_ATTR}]`).length;
-      const lockedBgs = document.querySelectorAll(`[${SKELIO_BG_ATTR}]`).length;
+      const lockedEls = document.querySelectorAll(`[${SKELIO_ATTR}]`);
+      const lockedBgs = document.querySelectorAll(`[${SKELIO_BG_ATTR}]`);
       const extras = (fontStyleEl ? 1 : 0) + (threeDStyleEl ? 1 : 0);
-      const currentPageBlocked = Math.max(blockedResourcesCount, lockedEls + lockedBgs + extras);
-      const currentPageShifts = Math.max(layoutShiftsPrevented, lockedEls + lockedBgs);
-      const currentPageBandwidth = currentPageBlocked * 480000;
+      const currentPageBlocked = Math.max(blockedResourcesCount, lockedEls.length + lockedBgs.length + extras);
+      const currentPageShifts = Math.max(layoutShiftsPrevented, lockedEls.length + lockedBgs.length);
+
+      let currentPageBandwidth = 0;
+      lockedEls.forEach(el => {
+        currentPageBandwidth += calculateElementSavings(el, false);
+      });
+      lockedBgs.forEach(el => {
+        currentPageBandwidth += calculateElementSavings(el, true);
+      });
+      if (fontStyleEl) currentPageBandwidth += 140000;
+      if (threeDStyleEl) currentPageBandwidth += 2800000;
 
       sendResponse({
         active: isActive,

@@ -198,11 +198,6 @@ async function hydrateURLs(urls, tabId) {
       removeRuleIds: []
     });
 
-    const data = await chrome.storage.local.get(['totalBandwidthSaved']);
-    await chrome.storage.local.set({
-      totalBandwidthSaved: (data.totalBandwidthSaved || 0) + (500000 * Math.max(1, urls.length))
-    });
-
     console.log(`[SkelIO] Hydrated ${urls.length} asset URLs on tab ${tabId}`);
     return { success: true };
   } catch (err) {
@@ -420,12 +415,55 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       getStats().then(sendResponse);
       return true;
 
+    case 'GET_RESOURCE_SIZE':
+      if (!message.url) {
+        sendResponse({ success: false, size: 0 });
+        return false;
+      }
+      getPreciseResourceSize(message.url).then(size => {
+        sendResponse({ success: true, size });
+      });
+      return true;
+
     default:
       console.warn('[SkelIO] Unknown action:', message.action);
       sendResponse({ success: false, error: 'Unknown action' });
       return false;
   }
 });
+
+/**
+ * Query remote Content-Length header via HEAD request (0-byte body transfer)
+ */
+const urlSizeCache = new Map();
+
+async function getPreciseResourceSize(url) {
+  if (!url || typeof url !== 'string' || url.startsWith('data:') || url.startsWith('blob:')) return 0;
+  if (urlSizeCache.has(url)) return urlSizeCache.get(url);
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2200);
+    const resp = await fetch(url, { method: 'HEAD', signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    const cl = resp.headers.get('content-length');
+    if (cl) {
+      const size = parseInt(cl, 10);
+      if (!isNaN(size) && size > 0) {
+        // Cache in memory (cap cache at 500 entries)
+        if (urlSizeCache.size > 500) {
+          const firstKey = urlSizeCache.keys().next().value;
+          urlSizeCache.delete(firstKey);
+        }
+        urlSizeCache.set(url, size);
+        return size;
+      }
+    }
+  } catch (err) {}
+
+  return 0;
+}
 
 /**
  * Clean up rules when tab is closed

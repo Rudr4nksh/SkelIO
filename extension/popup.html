@@ -240,6 +240,12 @@
       color: #64748B;
     }
 
+    .user-profile-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
     .profile-action-btn {
       display: inline-flex;
       align-items: center;
@@ -265,6 +271,34 @@
     .profile-action-btn svg {
       width: 9px;
       height: 9px;
+      fill: currentColor;
+    }
+
+    .profile-logout-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      border-radius: 6px;
+      background: #FEF2F2;
+      border: 1px solid #FECACA;
+      color: #DC2626;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .profile-logout-btn:hover {
+      background: #FEE2E2;
+      border-color: #FCA5A5;
+      color: #B91C1C;
+      transform: scale(1.06);
+    }
+
+    .profile-logout-btn svg {
+      width: 12px;
+      height: 12px;
       fill: currentColor;
     }
 
@@ -807,10 +841,15 @@
           <div class="user-profile-badge guest" id="userProfileBadge">NOT SYNCED</div>
         </div>
       </div>
-      <a href="#" class="profile-action-btn" id="openDashBtn" title="Sign In or Open Dashboard">
-        <span>Sign In</span>
-        <svg viewBox="0 0 24 24"><path d="M5 13h11.86l-5.43 5.43 1.42 1.42L21.14 12l-8.29-7.85-1.42 1.42L16.86 11H5v2z"/></svg>
-      </a>
+      <div class="user-profile-actions">
+        <a href="#" class="profile-action-btn" id="openDashBtn" title="Sign In or Open Dashboard">
+          <span>Sign In</span>
+          <svg viewBox="0 0 24 24"><path d="M5 13h11.86l-5.43 5.43 1.42 1.42L21.14 12l-8.29-7.85-1.42 1.42L16.86 11H5v2z"/></svg>
+        </a>
+        <button class="profile-logout-btn" id="popupLogoutBtn" title="Sign Out from SkelIO" style="display: none;">
+          <svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+        </button>
+      </div>
     </div>
 
     <!-- Top Header -->

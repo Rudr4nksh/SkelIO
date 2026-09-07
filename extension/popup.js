@@ -394,33 +394,76 @@ function updateStatsDisplay(shifts, blocked, bandwidth) {
   if (bandwidthEl) bandwidthEl.textContent = formatBandwidthSaved(bandwidth);
 }
 
+async function syncStatsToDashboardTabs(storage) {
+  if (!chrome || !chrome.tabs || !chrome.scripting) return;
+  try {
+    const tabs = await chrome.tabs.query({});
+    for (const tab of tabs) {
+      if (tab.url && (tab.url.includes('dashboard.html') || tab.url.includes('website'))) {
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: (stats, bw, shifts, blk, profile) => {
+              if (stats && Object.keys(stats).length > 0) {
+                const cur = JSON.parse(localStorage.getItem('skelio_domain_stats') || '{}');
+                localStorage.setItem('skelio_domain_stats', JSON.stringify(Object.assign({}, cur, stats)));
+              }
+              if (bw) localStorage.setItem('skelio_total_bandwidth', String(bw));
+              if (shifts) localStorage.setItem('skelio_total_shifts', String(shifts));
+              if (blk) localStorage.setItem('skelio_total_blocked', String(blk));
+              if (profile && profile.name) localStorage.setItem('skelio_user_profile', JSON.stringify(profile));
+
+              window.postMessage({ type: 'SKELIO_STATS_UPDATED' }, '*');
+              if (typeof window.loadRealData === 'function') window.loadRealData();
+              if (typeof window.loadUserProfile === 'function') window.loadUserProfile();
+            },
+            args: [
+              storage.skelio_domain_stats || {},
+              storage.totalBandwidthSaved || 0,
+              storage.layoutShiftsPrevented || 0,
+              storage.totalBlockedResources || 0,
+              storage.skelio_user_profile || null
+            ]
+          });
+        } catch (e) {}
+      }
+    }
+  } catch (e) {}
+}
+
 async function loadStats() {
   try {
-    // 1. Try to get real-time live page stats from active tab
-    const tab = await getCurrentTab();
-    if (tab && tab.id) {
-      try {
-        const response = await chrome.tabs.sendMessage(tab.id, { action: 'SKELIO_STATUS' });
-        if (response && response.pageBlocked !== undefined && response.active) {
-          updateStatsDisplay(response.pageShifts, response.pageBlocked, response.pageBandwidth);
-          return;
-        }
-      } catch (e) {}
-    }
-
-    // 2. Query storage directly
+    // 1. Query storage for both page-level and global metrics
     const storage = await chrome.storage.local.get([
       'pageBlocked',
       'pageShifts',
       'pageBandwidth',
       'totalBlockedResources',
       'layoutShiftsPrevented',
-      'totalBandwidthSaved'
+      'totalBandwidthSaved',
+      'skelio_domain_stats',
+      'skelio_user_profile'
     ]);
 
-    const blocked = (skelioActive && storage.pageBlocked) ? storage.pageBlocked : (storage.totalBlockedResources || 0);
-    const shifts = (skelioActive && storage.pageShifts) ? storage.pageShifts : (storage.layoutShiftsPrevented || 0);
-    const bandwidth = (skelioActive && storage.pageBandwidth) ? storage.pageBandwidth : (storage.totalBandwidthSaved || 0);
+    // Actively synchronize to open dashboard tabs
+    syncStatsToDashboardTabs(storage).catch(() => {});
+
+    // 2. Try to get real-time live page stats from active tab
+    const tab = await getCurrentTab();
+    if (tab && tab.id) {
+      try {
+        const response = await chrome.tabs.sendMessage(tab.id, { action: 'SKELIO_STATUS' });
+        if (response && response.active && response.pageBlocked > 0) {
+          updateStatsDisplay(response.pageShifts, response.pageBlocked, response.pageBandwidth);
+          return;
+        }
+      } catch (e) {}
+    }
+
+    // 3. Fallback: If page has blocks, show page stats; otherwise show cumulative all-time saved!
+    const blocked = (skelioActive && storage.pageBlocked > 0) ? storage.pageBlocked : (storage.totalBlockedResources || 0);
+    const shifts = (skelioActive && storage.pageShifts > 0) ? storage.pageShifts : (storage.layoutShiftsPrevented || 0);
+    const bandwidth = (skelioActive && storage.pageBandwidth > 0) ? storage.pageBandwidth : (storage.totalBandwidthSaved || 0);
 
     updateStatsDisplay(shifts, blocked, bandwidth);
   } catch (err) {}
@@ -483,7 +526,7 @@ async function loadUserProfile() {
       try {
         const tabs = await chrome.tabs.query({});
         for (const tab of tabs) {
-          if (tab.url && (tab.url.includes('website') || tab.url.includes('login.html') || tab.url.includes('dashboard.html') || tab.url.includes('index.html') || tab.url.includes('SkelIO'))) {
+          if (tab.url && (tab.url.includes('website') || tab.url.includes('dashboard.html') || tab.url.includes('index.html') || tab.url.includes('SkelIO')) && !tab.url.includes('login.html')) {
             try {
               const injection = await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
@@ -533,6 +576,7 @@ async function loadUserProfile() {
     const nameEl = document.getElementById('userProfileName');
     const badgeEl = document.getElementById('userProfileBadge');
     const dashBtn = document.getElementById('openDashBtn');
+    const logoutBtn = document.getElementById('popupLogoutBtn');
 
     if (profile && profile.name) {
       if (avatarEl) {
@@ -548,6 +592,9 @@ async function loadUserProfile() {
         dashBtn.innerHTML = `<span>Dashboard</span><svg viewBox="0 0 24 24" style="width:9px;height:9px;fill:currentColor;"><path d="M5 13h11.86l-5.43 5.43 1.42 1.42L21.14 12l-8.29-7.85-1.42 1.42L16.86 11H5v2z"/></svg>`;
         dashBtn.title = 'Open SkelIO Analytics Dashboard';
       }
+      if (logoutBtn) {
+        logoutBtn.style.display = 'inline-flex';
+      }
     } else {
       if (avatarEl) {
         avatarEl.textContent = 'G';
@@ -562,10 +609,58 @@ async function loadUserProfile() {
         dashBtn.innerHTML = `<span>Sign In</span><svg viewBox="0 0 24 24" style="width:9px;height:9px;fill:currentColor;"><path d="M5 13h11.86l-5.43 5.43 1.42 1.42L21.14 12l-8.29-7.85-1.42 1.42L16.86 11H5v2z"/></svg>`;
         dashBtn.title = 'Sign In to SkelIO Account';
       }
+      if (logoutBtn) {
+        logoutBtn.style.display = 'none';
+      }
     }
   } catch (e) {
     console.warn('Error loading user profile:', e);
   }
+}
+
+// ─── Extension Sign Out Button Handler (Syncs to website tabs) ───
+const popupLogoutBtn = document.getElementById('popupLogoutBtn');
+if (popupLogoutBtn) {
+  popupLogoutBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    try {
+      // 1. Remove from extension storage and local storage
+      if (chrome && chrome.storage && chrome.storage.local) {
+        await chrome.storage.local.remove(['skelio_user_profile']);
+      }
+      localStorage.removeItem('skelio_user_profile');
+
+      // 2. Clear profile from all open website tabs and redirect any dashboard tabs to login.html
+      if (chrome && chrome.tabs && chrome.scripting) {
+        const tabs = await chrome.tabs.query({});
+        for (const tab of tabs) {
+          if (tab.url && (tab.url.includes('website') || tab.url.includes('dashboard.html') || tab.url.includes('login.html') || tab.url.includes('SkelIO'))) {
+            try {
+              await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: () => {
+                  try {
+                    localStorage.removeItem('skelio_user_profile');
+                    document.documentElement.removeAttribute('data-skelio-profile');
+                    window.postMessage({ type: 'SKELIO_PROFILE_LOGOUT' }, '*');
+                    document.dispatchEvent(new CustomEvent('SKELIO_PROFILE_LOGOUT'));
+                    if (window.location.href.includes('dashboard.html')) {
+                      window.location.href = 'login.html';
+                    }
+                  } catch (e) {}
+                }
+              });
+            } catch (err) {}
+          }
+        }
+      }
+
+      // 3. Immediately switch popup UI to Guest mode
+      await loadUserProfile();
+    } catch (err) {
+      console.warn('Error during popup logout:', err);
+    }
+  });
 }
 
 const openDashBtn = document.getElementById('openDashBtn');
@@ -573,9 +668,19 @@ if (openDashBtn) {
   openDashBtn.addEventListener('click', async (e) => {
     e.preventDefault();
     try {
-      const data = await chrome.storage.local.get(['skelio_user_profile', 'skelio_website_url']);
+      const data = await chrome.storage.local.get([
+        'skelio_user_profile',
+        'skelio_website_url',
+        'skelio_domain_stats',
+        'totalBandwidthSaved',
+        'layoutShiftsPrevented',
+        'totalBlockedResources'
+      ]);
       const isLoggedIn = !!(data.skelio_user_profile && data.skelio_user_profile.name);
       const targetPage = isLoggedIn ? 'dashboard.html' : 'login.html';
+
+      // Push latest stats into any dashboard tab
+      await syncStatsToDashboardTabs(data);
 
       // 1. Check if an existing tab has this page or any SkelIO website page
       if (chrome && chrome.tabs) {
