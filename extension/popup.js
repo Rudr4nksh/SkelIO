@@ -360,25 +360,60 @@ function updateStatsDisplay(shifts, blocked, bandwidth) {
   if (bandwidthEl) bandwidthEl.textContent = formatBandwidthSaved(bandwidth);
 }
 
+function isSkelIOWebsiteUrl(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== 'string') return false;
+  try {
+    const url = new URL(rawUrl);
+    const host = url.hostname.toLowerCase();
+    // Strictly block Figma and any third-party services
+    if (host.includes('figma.com') || host.includes('canva.com') || host.includes('github.com') ||
+        host.includes('google.com') || host.includes('notion.so') || host.includes('miro.com')) {
+      return false;
+    }
+    // file:// protocol check
+    if (url.protocol === 'file:') {
+      const path = url.pathname.toLowerCase();
+      return path.includes('skelio') && (path.includes('dashboard.html') || path.includes('login.html') || path.includes('index.html') || path.includes('website'));
+    }
+    // localhost check
+    if (host === 'localhost' || host === '127.0.0.1') {
+      const path = url.pathname.toLowerCase();
+      return path.includes('dashboard.html') || path.includes('login.html') || path.includes('index.html') || path === '/' || path.includes('website');
+    }
+    // Official SkelIO domains
+    if (host === 'skelio.com' || host.endsWith('.skelio.com') || host === 'skelio.io' || host.endsWith('.skelio.io')) {
+      return true;
+    }
+  } catch (e) {}
+  return false;
+}
+
 async function syncStatsToDashboardTabs(storage) {
   if (!chrome || !chrome.tabs || !chrome.scripting) return;
   try {
     const tabs = await chrome.tabs.query({});
     for (const tab of tabs) {
-      if (tab.url && (tab.url.includes('dashboard.html') || tab.url.includes('website'))) {
+      if (tab.url && isSkelIOWebsiteUrl(tab.url) && tab.url.includes('dashboard.html')) {
         try {
           await chrome.scripting.executeScript({
             target: { tabId: tab.id },
             func: (stats, bw, shifts, blk, profile) => {
+              // 1. Sync metrics
               if (stats && Object.keys(stats).length > 0) {
-                const cur = JSON.parse(localStorage.getItem('skelio_domain_stats') || '{}');
-                localStorage.setItem('skelio_domain_stats', JSON.stringify(Object.assign({}, cur, stats)));
+                localStorage.setItem('skelio_domain_stats', JSON.stringify(stats));
+              } else {
+                localStorage.removeItem('skelio_domain_stats');
               }
-              if (bw) localStorage.setItem('skelio_total_bandwidth', String(bw));
-              if (shifts) localStorage.setItem('skelio_total_shifts', String(shifts));
-              if (blk) localStorage.setItem('skelio_total_blocked', String(blk));
-              if (profile && profile.name) localStorage.setItem('skelio_user_profile', JSON.stringify(profile));
+              localStorage.setItem('skelio_total_bandwidth', String(bw || 0));
+              localStorage.setItem('skelio_total_shifts', String(shifts || 0));
+              localStorage.setItem('skelio_total_blocked', String(blk || 0));
 
+              // 2. Sync profile if available
+              if (profile && profile.name) {
+                localStorage.setItem('skelio_user_profile', JSON.stringify(profile));
+              }
+
+              // 3. Trigger immediate dashboard update
               window.postMessage({ type: 'SKELIO_STATS_UPDATED' }, '*');
               if (typeof window.loadRealData === 'function') window.loadRealData();
               if (typeof window.loadUserProfile === 'function') window.loadUserProfile();
@@ -445,6 +480,102 @@ document.getElementById('reloadTabBtn')?.addEventListener('click', reloadTab);
 document.getElementById('shortcutHintBtn')?.addEventListener('click', reloadTab);
 document.getElementById('testSpeedBtn')?.addEventListener('click', runSpeedBenchmark);
 
+// ─── Reset Stats Listener ───
+const resetStatsBtn = document.getElementById('resetStatsBtn');
+if (resetStatsBtn) {
+  resetStatsBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    if (!confirm('Are you sure you want to reset all tracked statistics to 0?')) return;
+    try {
+      // 1. Wipe extension storage stats
+      if (chrome && chrome.storage && chrome.storage.local) {
+        await chrome.storage.local.remove([
+          'skelio_domain_stats',
+          'totalBandwidthSaved',
+          'layoutShiftsPrevented',
+          'totalBlockedResources',
+          'pageBlocked',
+          'pageShifts',
+          'pageBandwidth'
+        ]);
+        await chrome.storage.local.set({
+          skelio_domain_stats: {},
+          totalBandwidthSaved: 0,
+          layoutShiftsPrevented: 0,
+          totalBlockedResources: 0,
+          pageBlocked: 0,
+          pageShifts: 0,
+          pageBandwidth: 0
+        });
+      }
+
+      // 2. Wipe extension localStorage
+      localStorage.removeItem('skelio_domain_stats');
+      localStorage.removeItem('skelio_total_bandwidth');
+      localStorage.removeItem('skelio_total_shifts');
+      localStorage.removeItem('skelio_total_blocked');
+
+      // 3. Clear user profile archive if logged in
+      let currentEmail = null;
+      try {
+        const prof = localStorage.getItem('skelio_user_profile');
+        if (prof) currentEmail = JSON.parse(prof)?.email?.toLowerCase();
+      } catch (e) {}
+      if (!currentEmail && chrome && chrome.storage && chrome.storage.local) {
+        const st = await chrome.storage.local.get(['active_user_email', 'skelio_user_profile']);
+        currentEmail = st?.active_user_email || st?.skelio_user_profile?.email?.toLowerCase();
+      }
+      if (currentEmail) {
+        localStorage.setItem(`skelio_user_data_${currentEmail}`, JSON.stringify({
+          domainStats: {},
+          totalBandwidth: '0',
+          totalShifts: '0',
+          totalBlocked: '0'
+        }));
+      }
+
+      // 4. Update website tabs
+      if (chrome && chrome.tabs && chrome.scripting) {
+        const tabs = await chrome.tabs.query({});
+        for (const tab of tabs) {
+          if (tab.url && isSkelIOWebsiteUrl(tab.url)) {
+            try {
+              await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: (email) => {
+                  try {
+                    localStorage.removeItem('skelio_domain_stats');
+                    localStorage.removeItem('skelio_total_bandwidth');
+                    localStorage.removeItem('skelio_total_shifts');
+                    localStorage.removeItem('skelio_total_blocked');
+                    if (email) {
+                      localStorage.setItem(`skelio_user_data_${email}`, JSON.stringify({
+                        domainStats: {},
+                        totalBandwidth: '0',
+                        totalShifts: '0',
+                        totalBlocked: '0'
+                      }));
+                    }
+                    window.postMessage({ type: 'SKELIO_STATS_RESET' }, '*');
+                    document.dispatchEvent(new CustomEvent('SKELIO_STATS_RESET'));
+                    if (typeof window.loadRealData === 'function') window.loadRealData();
+                  } catch (e) {}
+                },
+                args: [currentEmail]
+              });
+            } catch (err) {}
+          }
+        }
+      }
+
+      // 5. Update popup UI immediately
+      updateStatsDisplay(0, 0, 0);
+    } catch (err) {
+      console.warn('Error resetting stats:', err);
+    }
+  });
+}
+
 // ─── Interactive Slider Listener ───
 const slider = document.getElementById('speedRangeSlider');
 if (slider) {
@@ -484,16 +615,24 @@ async function loadUserProfile() {
       const data = await chrome.storage.local.get(['skelio_user_profile', 'skelio_website_url']);
       profile = data.skelio_user_profile;
       if (data.skelio_website_url) {
-        cachedWebsiteBaseUrl = data.skelio_website_url;
+        if (isSkelIOWebsiteUrl(data.skelio_website_url)) {
+          cachedWebsiteBaseUrl = data.skelio_website_url;
+        } else {
+          chrome.storage.local.remove('skelio_website_url');
+        }
       }
     }
 
-    // 2. If not found in extension storage, actively scan open tabs
-    if (!profile && chrome && chrome.tabs && chrome.scripting) {
+    // 2. Scan open SkelIO tabs for real-time live profile state
+    if (chrome && chrome.tabs && chrome.scripting) {
       try {
         const tabs = await chrome.tabs.query({});
+        let openSkelIOTab = null;
+        let tabProfile = null;
+
         for (const tab of tabs) {
-          if (tab.url && (tab.url.includes('website') || tab.url.includes('dashboard.html') || tab.url.includes('index.html') || tab.url.includes('SkelIO')) && !tab.url.includes('login.html')) {
+          if (tab.url && isSkelIOWebsiteUrl(tab.url)) {
+            openSkelIOTab = tab;
             try {
               const injection = await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
@@ -508,25 +647,34 @@ async function loadUserProfile() {
 
               if (injection && injection[0] && injection[0].result) {
                 const res = injection[0].result;
-                cachedWebsiteBaseUrl = res.url;
-                if (res.profile) {
-                  profile = JSON.parse(res.profile);
-                  await chrome.storage.local.set({
-                    skelio_user_profile: profile,
-                    skelio_website_url: res.url
-                  });
+                if (isSkelIOWebsiteUrl(res.url)) {
+                  cachedWebsiteBaseUrl = res.url;
+                  if (res.profile) {
+                    try {
+                      const parsed = JSON.parse(res.profile);
+                      if (parsed && parsed.name && parsed.email) {
+                        tabProfile = parsed;
+                        break;
+                      }
+                    } catch (e) {}
+                  }
                 }
-                if (res.stats) {
-                  try {
-                    const stats = JSON.parse(res.stats);
-                    const cur = (await chrome.storage.local.get(['skelio_domain_stats']))?.skelio_domain_stats || {};
-                    await chrome.storage.local.set({ skelio_domain_stats: Object.assign({}, cur, stats) });
-                  } catch (e) {}
-                }
-                if (profile) break;
               }
             } catch (err) {}
           }
+        }
+
+        if (tabProfile) {
+          profile = tabProfile;
+          const userEmail = profile.email?.toLowerCase();
+          await chrome.storage.local.set({
+            skelio_user_profile: profile,
+            active_user_email: userEmail,
+            skelio_website_url: cachedWebsiteBaseUrl
+          });
+        } else if (openSkelIOTab && !openSkelIOTab.url.includes('login.html')) {
+          profile = null;
+          await chrome.storage.local.remove(['skelio_user_profile', 'active_user_email']);
         }
       } catch (e) {}
     }
@@ -545,7 +693,7 @@ async function loadUserProfile() {
     const dashBtn = document.getElementById('openDashBtn');
     const logoutBtn = document.getElementById('popupLogoutBtn');
 
-    if (profile && profile.name) {
+    if (profile && profile.name && profile.email) {
       if (avatarEl) {
         avatarEl.textContent = profile.initials || profile.name.slice(0, 2).toUpperCase();
         avatarEl.classList.remove('guest');
@@ -564,20 +712,20 @@ async function loadUserProfile() {
       }
     } else {
       if (avatarEl) {
-        avatarEl.textContent = 'RU';
-        avatarEl.classList.remove('guest');
+        avatarEl.textContent = 'G';
+        avatarEl.classList.add('guest');
       }
-      if (nameEl) nameEl.textContent = 'Rudranksh';
+      if (nameEl) nameEl.textContent = 'Guest User';
       if (badgeEl) {
-        badgeEl.textContent = 'PRO MEMBER';
-        badgeEl.classList.remove('guest');
+        badgeEl.textContent = 'NOT SIGNED IN';
+        badgeEl.classList.add('guest');
       }
       if (dashBtn) {
-        dashBtn.innerHTML = `<span>Dashboard</span><svg viewBox="0 0 24 24" style="width:10px;height:10px;fill:currentColor;"><path d="M5 13h11.86l-5.43 5.43 1.42 1.42L21.14 12l-8.29-7.85-1.42 1.42L16.86 11H5v2z"/></svg>`;
-        dashBtn.title = 'Open SkelIO Dashboard';
+        dashBtn.innerHTML = `<span>Sign In</span><svg viewBox="0 0 24 24" style="width:10px;height:10px;fill:currentColor;"><path d="M5 13h11.86l-5.43 5.43 1.42 1.42L21.14 12l-8.29-7.85-1.42 1.42L16.86 11H5v2z"/></svg>`;
+        dashBtn.title = 'Sign In to SkelIO Account';
       }
       if (logoutBtn) {
-        logoutBtn.style.display = 'inline-flex';
+        logoutBtn.style.display = 'none';
       }
     }
   } catch (e) {
@@ -591,23 +739,41 @@ if (popupLogoutBtn) {
   popupLogoutBtn.addEventListener('click', async (e) => {
     e.preventDefault();
     try {
-      // 1. Remove from extension storage and local storage
+      // 1. Remove active profile and stats from extension storage
       if (chrome && chrome.storage && chrome.storage.local) {
-        await chrome.storage.local.remove(['skelio_user_profile']);
+        await chrome.storage.local.remove([
+          'skelio_user_profile',
+          'active_user_email',
+          'skelio_domain_stats',
+          'totalBandwidthSaved',
+          'layoutShiftsPrevented',
+          'totalBlockedResources',
+          'pageBlocked',
+          'pageShifts',
+          'pageBandwidth'
+        ]);
       }
       localStorage.removeItem('skelio_user_profile');
+      localStorage.removeItem('skelio_domain_stats');
+      localStorage.removeItem('skelio_total_bandwidth');
+      localStorage.removeItem('skelio_total_shifts');
+      localStorage.removeItem('skelio_total_blocked');
 
-      // 2. Clear profile from all open website tabs and redirect any dashboard tabs to login.html
+      // 2. Clear profile and stats from all open website tabs and redirect any dashboard tabs to login.html
       if (chrome && chrome.tabs && chrome.scripting) {
         const tabs = await chrome.tabs.query({});
         for (const tab of tabs) {
-          if (tab.url && (tab.url.includes('website') || tab.url.includes('dashboard.html') || tab.url.includes('login.html') || tab.url.includes('SkelIO'))) {
+          if (tab.url && isSkelIOWebsiteUrl(tab.url)) {
             try {
               await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
                 func: () => {
                   try {
                     localStorage.removeItem('skelio_user_profile');
+                    localStorage.removeItem('skelio_domain_stats');
+                    localStorage.removeItem('skelio_total_bandwidth');
+                    localStorage.removeItem('skelio_total_shifts');
+                    localStorage.removeItem('skelio_total_blocked');
                     document.documentElement.removeAttribute('data-skelio-profile');
                     window.postMessage({ type: 'SKELIO_PROFILE_LOGOUT' }, '*');
                     document.dispatchEvent(new CustomEvent('SKELIO_PROFILE_LOGOUT'));
@@ -622,8 +788,9 @@ if (popupLogoutBtn) {
         }
       }
 
-      // 3. Immediately switch popup UI to Guest mode
+      // 3. Immediately switch popup UI to Guest mode and refresh stats
       await loadUserProfile();
+      await loadStats();
     } catch (err) {
       console.warn('Error during popup logout:', err);
     }
@@ -649,27 +816,57 @@ if (openDashBtn) {
       // Push latest stats into any dashboard tab
       await syncStatsToDashboardTabs(data);
 
-      // 1. Check if an existing tab has this page or any SkelIO website page
+      // Clean up any stale or invalid skelio_website_url (e.g. Figma or third-party)
+      let verifiedUrl = null;
+      if (data.skelio_website_url && isSkelIOWebsiteUrl(data.skelio_website_url)) {
+        verifiedUrl = data.skelio_website_url;
+      } else if (data.skelio_website_url) {
+        chrome.storage.local.remove('skelio_website_url');
+      }
+      if (!verifiedUrl && cachedWebsiteBaseUrl && isSkelIOWebsiteUrl(cachedWebsiteBaseUrl)) {
+        verifiedUrl = cachedWebsiteBaseUrl;
+      }
+
       if (chrome && chrome.tabs) {
         const tabs = await chrome.tabs.query({});
-        const existingTab = tabs.find(t => t.url && (t.url.includes(targetPage) || t.url.includes('website')));
-        if (existingTab) {
-          const targetUrl = existingTab.url.replace(/[^/]*$/, targetPage);
-          await chrome.tabs.update(existingTab.id, { url: targetUrl, active: true });
+
+        // 1. Check if an existing tab is already on targetPage
+        const exactTab = tabs.find(t => isSkelIOWebsiteUrl(t.url) && t.url.includes(targetPage));
+        if (exactTab) {
+          await chrome.tabs.update(exactTab.id, { active: true });
           return;
         }
 
-        // 2. If we cached the website URL, open targetPage
-        const baseUrl = data.skelio_website_url || cachedWebsiteBaseUrl;
-        if (baseUrl) {
-          const targetUrl = baseUrl.replace(/[^/]*$/, targetPage);
+        // 2. Check if an existing tab has any SkelIO website page open and navigate it
+        const existingSkelIOTab = tabs.find(t => isSkelIOWebsiteUrl(t.url));
+        if (existingSkelIOTab) {
+          const targetUrl = existingSkelIOTab.url.replace(/[^/]*$/, targetPage);
+          await chrome.tabs.update(existingSkelIOTab.id, { url: targetUrl, active: true });
+          return;
+        }
+
+        // 3. If verified website URL was saved, open targetPage in a new tab
+        if (verifiedUrl) {
+          const targetUrl = verifiedUrl.replace(/[^/]*$/, targetPage);
           await chrome.tabs.create({ url: targetUrl });
           return;
         }
-      }
-    } catch (err) {}
 
-    window.open('../website/dashboard.html', '_blank');
+        // 4. Default: Open local file URL or server
+        const defaultLocalUrl = `file:///C:/Users/RUDRANKSH%20PARIAL/Documents/Project/SkelIO/website/${targetPage}`;
+        try {
+          await chrome.tabs.create({ url: defaultLocalUrl });
+          return;
+        } catch (tabErr) {
+          await chrome.tabs.create({ url: `http://localhost:3000/${targetPage}` });
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Error navigating to SkelIO page:', err);
+    }
+
+    window.open(`../website/${targetPage}`, '_blank');
   });
 }
 

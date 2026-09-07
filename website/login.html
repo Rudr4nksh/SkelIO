@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="skelio-app" content="website">
   <title>Login & Sign In - SkelIO</title>
   <link rel="icon" type="image/png" href="../extension/icons/icon32.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1800,6 +1801,74 @@
       // Helper: Save user profile & synchronize with extension
       function saveUserProfile(name, email) {
         const cleanName = name.trim() || email.split('@')[0];
+        const cleanEmail = email.trim().toLowerCase();
+
+        // 1. Archive previous logged in user's active stats before switching
+        let prevEmail = null;
+        try {
+          const prevStored = localStorage.getItem('skelio_user_profile');
+          if (prevStored) {
+            const prevProfile = JSON.parse(prevStored);
+            if (prevProfile && prevProfile.email) {
+              prevEmail = prevProfile.email.trim().toLowerCase();
+            }
+          }
+        } catch (e) {}
+
+        if (prevEmail && prevEmail !== cleanEmail) {
+          const oldStats = localStorage.getItem('skelio_domain_stats');
+          const oldBw = localStorage.getItem('skelio_total_bandwidth');
+          const oldShifts = localStorage.getItem('skelio_total_shifts');
+          const oldBlocked = localStorage.getItem('skelio_total_blocked');
+          if (oldStats || oldBw || oldShifts) {
+            localStorage.setItem(`skelio_user_data_${prevEmail}`, JSON.stringify({
+              domainStats: oldStats ? JSON.parse(oldStats) : {},
+              totalBandwidth: oldBw || '0',
+              totalShifts: oldShifts || '0',
+              totalBlocked: oldBlocked || '0'
+            }));
+          }
+        }
+
+        // 2. Load or initialize target user's isolated stats
+        let userStats = {};
+        let userBw = '0';
+        let userShifts = '0';
+        let userBlocked = '0';
+
+        const savedUserData = localStorage.getItem(`skelio_user_data_${cleanEmail}`);
+        if (savedUserData) {
+          try {
+            const parsed = JSON.parse(savedUserData);
+            userStats = parsed.domainStats || {};
+            userBw = parsed.totalBandwidth || '0';
+            userShifts = parsed.totalShifts || '0';
+            userBlocked = parsed.totalBlocked || '0';
+          } catch (e) {}
+        } else {
+          // Fresh zero-baseline for this user profile
+          userStats = {};
+          userBw = '0';
+          userShifts = '0';
+          userBlocked = '0';
+          localStorage.setItem(`skelio_user_data_${cleanEmail}`, JSON.stringify({
+            domainStats: userStats,
+            totalBandwidth: userBw,
+            totalShifts: userShifts,
+            totalBlocked: userBlocked
+          }));
+        }
+
+        // 3. Set active session stats strictly to this user
+        if (Object.keys(userStats).length > 0) {
+          localStorage.setItem('skelio_domain_stats', JSON.stringify(userStats));
+        } else {
+          localStorage.removeItem('skelio_domain_stats');
+        }
+        localStorage.setItem('skelio_total_bandwidth', String(userBw));
+        localStorage.setItem('skelio_total_shifts', String(userShifts));
+        localStorage.setItem('skelio_total_blocked', String(userBlocked));
+
         const parts = cleanName.split(/\s+/);
         let initials = parts[0][0].toUpperCase();
         if (parts.length > 1) {
@@ -1810,7 +1879,7 @@
         
         const profile = {
           name: cleanName,
-          email: email.trim(),
+          email: cleanEmail,
           initials: initials,
           plan: 'Pro',
           loggedIn: true,
@@ -1819,17 +1888,33 @@
         
         localStorage.setItem('skelio_user_profile', JSON.stringify(profile));
         
-        // Signal extension through multiple reliable bridge vectors
-        window.postMessage({ type: 'SKELIO_PROFILE_UPDATED', profile }, '*');
-        document.dispatchEvent(new CustomEvent('SKELIO_PROFILE_UPDATED', { detail: profile }));
-        document.documentElement.setAttribute('data-skelio-profile', JSON.stringify(profile));
-
-        // If extension context is directly accessible
+        // 4. Update extension storage with clean user data
         try {
           if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-            chrome.storage.local.set({ skelio_user_profile: profile });
+            chrome.storage.local.set({
+              skelio_user_profile: profile,
+              active_user_email: cleanEmail,
+              skelio_domain_stats: userStats,
+              totalBandwidthSaved: parseFloat(userBw) || 0,
+              layoutShiftsPrevented: parseInt(userShifts, 10) || 0,
+              totalBlockedResources: parseInt(userBlocked, 10) || 0,
+              pageBlocked: 0,
+              pageShifts: 0,
+              pageBandwidth: 0,
+              [`user_data_${cleanEmail}`]: {
+                domainStats: userStats,
+                totalBandwidth: userBw,
+                totalShifts: userShifts,
+                totalBlocked: userBlocked
+              }
+            });
           }
         } catch (e) {}
+
+        // Signal extension through multiple reliable bridge vectors
+        window.postMessage({ type: 'SKELIO_PROFILE_UPDATED', profile, domainStats: userStats, totalBandwidth: userBw, totalShifts: userShifts }, '*');
+        document.dispatchEvent(new CustomEvent('SKELIO_PROFILE_UPDATED', { detail: profile }));
+        document.documentElement.setAttribute('data-skelio-profile', JSON.stringify(profile));
 
         return profile;
       }

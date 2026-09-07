@@ -415,6 +415,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       getStats().then(sendResponse);
       return true;
 
+    case 'BLOCK_FONTS':
+    case 'ALLOW_FONTS':
+      sendResponse({ success: true });
+      return false;
+
     case 'GET_RESOURCE_SIZE':
       if (!message.url) {
         sendResponse({ success: false, size: 0 });
@@ -433,14 +438,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 /**
- * Query remote Content-Length header via HEAD request (0-byte body transfer)
+ * Query remote Content-Length header via zero-body HEAD request,
+ * falling back to single-byte Range GET request if server omits Content-Length on HEAD
  */
 const urlSizeCache = new Map();
+
+function cacheUrlSize(url, size) {
+  if (urlSizeCache.size > 500) {
+    const firstKey = urlSizeCache.keys().next().value;
+    urlSizeCache.delete(firstKey);
+  }
+  urlSizeCache.set(url, size);
+}
 
 async function getPreciseResourceSize(url) {
   if (!url || typeof url !== 'string' || url.startsWith('data:') || url.startsWith('blob:')) return 0;
   if (urlSizeCache.has(url)) return urlSizeCache.get(url);
 
+  // 1. Try zero-body HEAD request first
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2200);
@@ -451,12 +466,42 @@ async function getPreciseResourceSize(url) {
     if (cl) {
       const size = parseInt(cl, 10);
       if (!isNaN(size) && size > 0) {
-        // Cache in memory (cap cache at 500 entries)
-        if (urlSizeCache.size > 500) {
-          const firstKey = urlSizeCache.keys().next().value;
-          urlSizeCache.delete(firstKey);
+        cacheUrlSize(url, size);
+        return size;
+      }
+    }
+  } catch (err) {}
+
+  // 2. Fallback: single-byte Range GET request (RFC 7233)
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2200);
+    const resp = await fetch(url, {
+      method: 'GET',
+      headers: { 'Range': 'bytes=0-0' },
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    // Inspect Content-Range (e.g. "bytes 0-0/145820")
+    const cr = resp.headers.get('content-range');
+    if (cr) {
+      const match = cr.match(/\/(\d+)/);
+      if (match && match[1]) {
+        const size = parseInt(match[1], 10);
+        if (!isNaN(size) && size > 0) {
+          cacheUrlSize(url, size);
+          return size;
         }
-        urlSizeCache.set(url, size);
+      }
+    }
+
+    // Inspect Content-Length if server returned 200 instead of 206
+    const cl = resp.headers.get('content-length');
+    if (cl && resp.status === 200) {
+      const size = parseInt(cl, 10);
+      if (!isNaN(size) && size > 0) {
+        cacheUrlSize(url, size);
         return size;
       }
     }

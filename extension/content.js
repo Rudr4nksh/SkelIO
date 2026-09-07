@@ -301,104 +301,130 @@
     return { isDark, r, g, b };
   }
 
-  function createSkeletonSVG(elementOrWidth, widthOrHeight, heightOrLabel, optionalLabel) {
+  function createSkeletonSVG(elementOrWidth, widthOrHeight, heightOrTag, optionalTag) {
     let element = null;
     let width = 300;
     let height = 200;
-    let label = 'REMOVED BY SKELIO';
+    let tag = 'IMG';
 
     if (elementOrWidth && typeof elementOrWidth === 'object' && elementOrWidth.nodeType) {
       element = elementOrWidth;
       width = widthOrHeight || 300;
-      height = heightOrLabel || 200;
-      label = optionalLabel || 'REMOVED BY SKELIO';
+      height = heightOrTag || 200;
+      tag = (optionalTag || element.tagName || 'IMG').toUpperCase();
     } else {
       width = elementOrWidth || 300;
       height = widthOrHeight || 200;
-      label = heightOrLabel || 'REMOVED BY SKELIO';
+      tag = (heightOrTag || 'IMG').toUpperCase();
     }
 
-    const mainText = label;
-    const subText = 'Click to load';
+    const isVideo = (tag === 'VIDEO' || tag === 'EMBED' || tag === 'OBJECT');
     const { isDark, r, g, b } = detectAmbientTheme(element);
 
-    let stop0, stop1, borderColor, textColor, subTextColor;
+    let bg0, bg1, shimmerHighlight, border, pillBg, pillBorder, textColor, iconColor;
 
     if (isDark) {
-      // Harmonious Dark Mode Skeleton (YouTube dark, GitHub dark, Netflix, Spotify, Dark Sites)
-      const baseR = Math.max(14, Math.min(35, r));
-      const baseG = Math.max(18, Math.min(42, g));
-      const baseB = Math.max(28, Math.min(56, b));
+      // Linear/Apple deep zinc dark surface
+      const baseR = Math.max(14, Math.min(28, r));
+      const baseG = Math.max(16, Math.min(30, g));
+      const baseB = Math.max(20, Math.min(36, b));
 
-      stop0 = `rgb(${baseR + 8}, ${baseG + 10}, ${baseB + 14})`;
-      stop1 = `rgb(${baseR}, ${baseG}, ${baseB})`;
-      borderColor = `rgba(255, 255, 255, 0.12)`;
-      textColor = `#F8FAFC`;
-      subTextColor = `#38BDF8`;
+      bg0 = `rgb(${baseR + 4}, ${baseG + 4}, ${baseB + 6})`;
+      bg1 = `rgb(${baseR}, ${baseG}, ${baseB})`;
+      shimmerHighlight = `rgba(255, 255, 255, 0.04)`;
+      border = `rgba(255, 255, 255, 0.08)`;
+      pillBg = `rgba(255, 255, 255, 0.08)`;
+      pillBorder = `rgba(255, 255, 255, 0.12)`;
+      textColor = `#F1F5F9`;
+      iconColor = `#94A3B8`;
     } else {
-      // Harmonious Light Mode Skeleton (Wikipedia, Google, SkelIO Light, Medium)
-      const baseR = Math.max(220, Math.min(250, r));
-      const baseG = Math.max(220, Math.min(250, g));
-      const baseB = Math.max(215, Math.min(245, b));
+      // Off-white / cool grey light surface
+      const baseR = Math.max(232, Math.min(248, r));
+      const baseG = Math.max(232, Math.min(248, g));
+      const baseB = Math.max(230, Math.min(245, b));
 
-      stop0 = `rgb(${baseR}, ${baseG}, ${baseB})`;
-      stop1 = `rgb(${baseR - 10}, ${baseG - 10}, ${baseB - 10})`;
-      borderColor = `rgba(15, 23, 42, 0.08)`;
-      textColor = `#1D2440`;
-      subTextColor = `#5A6E85`;
+      bg0 = `rgb(${baseR}, ${baseG}, ${baseB})`;
+      bg1 = `rgb(${baseR - 8}, ${baseG - 8}, ${baseB - 8})`;
+      shimmerHighlight = `rgba(255, 255, 255, 0.65)`;
+      border = `rgba(0, 0, 0, 0.06)`;
+      pillBg = `rgba(255, 255, 255, 0.94)`;
+      pillBorder = `rgba(0, 0, 0, 0.08)`;
+      textColor = `#1E293B`;
+      iconColor = `#64748B`;
     }
 
-    // 1. For very small images/icons (< 45px), show minimalist rounded box
-    if (width < 45 || height < 45) {
+    const radius = Math.max(4, Math.min(12, Math.floor(Math.min(width, height) * 0.06)));
+
+    // 1. Tiny micro-thumbnails or avatar dots (< 48px) — pure clean shimmer box
+    if (width < 48 || height < 48) {
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
         <defs>
-          <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="${stop0}" />
-            <stop offset="100%" stop-color="${stop1}" />
+          <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="${bg0}"/>
+            <stop offset="100%" stop-color="${bg1}"/>
           </linearGradient>
         </defs>
-        <rect width="100%" height="100%" fill="url(#bgGrad)" rx="6" ry="6"/>
-        <rect width="100%" height="100%" fill="none" stroke="${borderColor}" stroke-width="1" rx="6" ry="6"/>
+        <rect width="100%" height="100%" fill="url(#g)" rx="${radius}"/>
+        <rect width="100%" height="100%" fill="none" stroke="${border}" stroke-width="1" rx="${radius}"/>
       </svg>`;
       return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
     }
 
-    // 2. For compact elements (height < 75px or width < 140px), show a single centered "Click to load"
-    if (height < 75 || width < 140) {
-      const singleFontSize = Math.max(11, Math.min(13, Math.floor(height * 0.32)));
+    // 2. Compact elements (height < 70px or width < 120px) — sleek standalone icon badge
+    if (height < 70 || width < 120) {
+      const iconSvg = isVideo
+        ? `<polygon points="-3,-5 6,0 -3,5" fill="${iconColor}"/>`
+        : `<rect x="-7" y="-5" width="14" height="10" rx="1.5" fill="none" stroke="${iconColor}" stroke-width="1.2"/><circle cx="-2" cy="-2" r="1.2" fill="${iconColor}"/><polyline points="-6,3 -2,-1 1,2 3,0 6,3" fill="none" stroke="${iconColor}" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>`;
+
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
         <defs>
-          <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="${stop0}" />
-            <stop offset="100%" stop-color="${stop1}" />
+          <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="${bg0}"/>
+            <stop offset="100%" stop-color="${bg1}"/>
           </linearGradient>
         </defs>
-        <rect width="100%" height="100%" fill="url(#bgGrad)" rx="8" ry="8"/>
-        <rect width="100%" height="100%" fill="none" stroke="${borderColor}" stroke-width="1.5" rx="8" ry="8"/>
-        <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" fill="${subTextColor}" font-family="-apple-system, BlinkMacSystemFont, 'Plus Jakarta Sans', 'Segoe UI', sans-serif" font-size="${singleFontSize}px" font-weight="700" letter-spacing="0.3px">${subText}</text>
+        <rect width="100%" height="100%" fill="url(#g)" rx="${radius}"/>
+        <rect width="100%" height="100%" fill="none" stroke="${border}" stroke-width="1" rx="${radius}"/>
+        <g transform="translate(${Math.round(width / 2)}, ${Math.round(height / 2)})">
+          <circle cx="0" cy="0" r="14" fill="${pillBg}" stroke="${pillBorder}" stroke-width="1"/>
+          ${iconSvg}
+        </g>
       </svg>`;
       return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
     }
 
-    // 3. For standard and large elements: symmetric two-line layout with theme-matching colors
-    const fontSize = Math.max(12, Math.min(18, Math.floor(width / 18), Math.floor(height / 10)));
-    const smallFontSize = Math.max(10, Math.min(13, Math.floor(fontSize * 0.75)));
-    const gap = Math.max(4, Math.floor(fontSize * 0.35));
+    // 3. Standard & Large Elements (e.g. YouTube video cards, hero images, article photos)
+    // Minimalist, high-end Apple / Linear frosted pill: [ ▶  Click to load ] or [ 🖼  Click to load ]
+    const pillWidth = 118;
+    const pillHeight = 30;
+    const pillRadius = 15;
+    const centerX = Math.round(width / 2);
+    const centerY = Math.round(height / 2);
 
-    const dyMain = -Math.round((gap + smallFontSize) / 2);
-    const dySub = Math.round((fontSize + gap) / 2);
+    const iconSvg = isVideo
+      ? `<polygon points="-3,-5 6,0 -3,5" fill="${iconColor}"/>`
+      : `<rect x="-7" y="-5" width="14" height="10" rx="1.5" fill="none" stroke="${iconColor}" stroke-width="1.2"/><circle cx="-2" cy="-2" r="1.2" fill="${iconColor}"/><polyline points="-6,3 -2,-1 1,2 3,0 6,3" fill="none" stroke="${iconColor}" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>`;
 
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
       <defs>
         <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="${stop0}" />
-          <stop offset="100%" stop-color="${stop1}" />
+          <stop offset="0%" stop-color="${bg0}"/>
+          <stop offset="100%" stop-color="${bg1}"/>
+        </linearGradient>
+        <linearGradient id="shimmer" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="transparent"/>
+          <stop offset="50%" stop-color="${shimmerHighlight}"/>
+          <stop offset="100%" stop-color="transparent"/>
         </linearGradient>
       </defs>
-      <rect width="100%" height="100%" fill="url(#bgGrad)" rx="10" ry="10"/>
-      <rect width="100%" height="100%" fill="none" stroke="${borderColor}" stroke-width="1.5" rx="10" ry="10"/>
-      <text x="50%" y="50%" dy="${dyMain}px" text-anchor="middle" dominant-baseline="central" fill="${textColor}" font-family="-apple-system, BlinkMacSystemFont, 'Plus Jakarta Sans', 'Segoe UI', sans-serif" font-size="${fontSize}px" font-weight="800" letter-spacing="0.5px">${mainText}</text>
-      <text x="50%" y="50%" dy="${dySub}px" text-anchor="middle" dominant-baseline="central" fill="${subTextColor}" font-family="-apple-system, BlinkMacSystemFont, 'Plus Jakarta Sans', 'Segoe UI', sans-serif" font-size="${smallFontSize}px" font-weight="700" letter-spacing="0.3px">⚡ ${subText}</text>
+      <rect width="100%" height="100%" fill="url(#bgGrad)" rx="${radius}"/>
+      <rect width="100%" height="100%" fill="url(#shimmer)" rx="${radius}"/>
+      <rect width="100%" height="100%" fill="none" stroke="${border}" stroke-width="1" rx="${radius}"/>
+      <g transform="translate(${centerX}, ${centerY})">
+        <rect x="-${Math.round(pillWidth / 2)}" y="-${Math.round(pillHeight / 2)}" width="${pillWidth}" height="${pillHeight}" rx="${pillRadius}" fill="${pillBg}" stroke="${pillBorder}" stroke-width="1"/>
+        <g transform="translate(-40, 0)">${iconSvg}</g>
+        <text x="-24" y="0" dominant-baseline="central" fill="${textColor}" font-family="-apple-system, BlinkMacSystemFont, 'Plus Jakarta Sans', 'Segoe UI', Roboto, sans-serif" font-size="11.5px" font-weight="600" letter-spacing="0.2px">Click to load</text>
+      </g>
     </svg>`;
 
     return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
@@ -494,13 +520,7 @@
     const { width, height, isFluid } = extractGeometry(element);
     element.dataset.skelioOriginalSrc = originalSrc;
 
-    // Determine label based on element type
-    let label = 'REMOVED BY SKELIO';
-    if (tag === 'VIDEO') label = 'VIDEO BLOCKED';
-    else if (tag === 'AUDIO') label = 'AUDIO BLOCKED';
-    else if (tag === 'OBJECT' || tag === 'EMBED') label = 'EMBED BLOCKED';
-
-    const skeletonSVG = createSkeletonSVG(width, height, label);
+    const skeletonSVG = createSkeletonSVG(element, width, height, tag);
 
     const compStyle = window.getComputedStyle(element);
     const isNaturallyPointerEventsNone = compStyle.pointerEvents === 'none';
@@ -644,7 +664,7 @@
 
     // Mark as locked
     element.setAttribute(SKELIO_ATTR, 'true');
-    element.title = 'Click to load (SkelIO)';
+    element.title = 'Click to load';
 
     // Click-to-hydrate
     element.addEventListener('click', function hydrateHandler(e) {
@@ -1215,7 +1235,7 @@
     const rect = element.getBoundingClientRect();
     const width = Math.floor(rect.width);
     const height = Math.floor(rect.height);
-    const skeletonSVG = createSkeletonSVG(width, height, 'BG IMAGE BLOCKED');
+    const skeletonSVG = createSkeletonSVG(element, width, height, 'IMG');
 
     element.style.setProperty('background-image', `url("${skeletonSVG}")`, 'important');
     element.style.setProperty('background-size', '100% 100%', 'important');
@@ -1492,8 +1512,8 @@
   function calculateElementSavings(element, isBg = false) {
     if (!element) return 0;
 
-    // 1. If exact size was already resolved from Content-Length or prior calculation
-    if (element.dataset.skelioSavedBytes) {
+    // 1. If exact size was already resolved from HTTP Content-Length header or exact data URI
+    if (element.dataset.skelioExact === 'true' && element.dataset.skelioSavedBytes) {
       const val = parseInt(element.dataset.skelioSavedBytes, 10);
       if (!isNaN(val) && val > 0) return val;
     }
@@ -1502,72 +1522,98 @@
     const rawSrc = element.dataset.skelioOriginalSrc || element.getAttribute('src') || element.dataset.skelioOriginalBg || '';
     const src = rawSrc.toLowerCase();
 
+    // If data: URI, calculate exact byte size directly from payload
+    if (src.startsWith('data:')) {
+      const commaIdx = src.indexOf(',');
+      if (commaIdx !== -1) {
+        const base64Data = src.substring(commaIdx + 1);
+        const exactBytes = Math.round(base64Data.length * 0.75);
+        element.dataset.skelioSavedBytes = String(exactBytes);
+        element.dataset.skelioExact = 'true';
+        return exactBytes;
+      }
+    }
+
     // 2. Measure actual rendered geometry
     const rect = element.getBoundingClientRect ? element.getBoundingClientRect() : { width: 0, height: 0 };
     let width = Math.round(rect.width || parseInt(element.width, 10) || parseInt(element.style?.width, 10) || 0);
     let height = Math.round(rect.height || parseInt(element.height, 10) || parseInt(element.style?.height, 10) || 0);
 
-    // If dimensions are collapsed (e.g. before initial paint or off-screen), use element attributes or sensible defaults
-    if (width <= 0) width = parseInt(element.getAttribute('width'), 10) || 320;
-    if (height <= 0) height = parseInt(element.getAttribute('height'), 10) || 240;
+    // If dimensions are collapsed, inspect HTML attributes
+    if (width <= 0) width = parseInt(element.getAttribute('width'), 10) || 0;
+    if (height <= 0) height = parseInt(element.getAttribute('height'), 10) || 0;
 
-    // Device Pixel Ratio (e.g. 1.5x on Windows scaling, 2x on Retina)
-    const dpr = Math.min(window.devicePixelRatio || 1, 3);
-    const physicalPixels = Math.max(1, width * height * (dpr * dpr));
+    // If still collapsed, check parent container dimensions
+    if (width <= 0 && element.parentElement) {
+      const pRect = element.parentElement.getBoundingClientRect ? element.parentElement.getBoundingClientRect() : null;
+      if (pRect) {
+        width = Math.round(pRect.width || 0);
+        height = Math.round(pRect.height || 0);
+      }
+    }
+
+    // Genuinely hidden (0x0) or micro-tracker pixel (1x1)
+    if (width <= 1 || height <= 1) {
+      const trackerBytes = 68; // 1x1 tracking beacon
+      element.dataset.skelioSavedBytes = String(trackerBytes);
+      return trackerBytes;
+    }
+
+    // Cap geometry to realistic viewport bounds to avoid runaway values
+    width = Math.min(width, window.innerWidth || 1920);
+    height = Math.min(height, window.innerHeight || 1080);
+    const pixels = width * height;
 
     let bytes = 0;
 
     // Video media (<video>, <source>, .mp4, .webm)
     if (tag === 'VIDEO' || src.includes('.mp4') || src.includes('.webm')) {
-      if (width >= 1200 || height >= 720) {
-        bytes = 2450000; // ~2.45 MB (Full HD web loop)
-      } else if (width >= 600 || height >= 400) {
-        bytes = 1250000; // ~1.25 MB (standard web video player)
+      if (width >= 1000 || height >= 600) {
+        bytes = 950000; // ~950 KB (standard web hero video loop)
+      } else if (width >= 500 || height >= 300) {
+        bytes = 480000; // ~480 KB
       } else {
-        bytes = 650000;  // ~650 KB (small preview/clip)
+        bytes = 220000; // ~220 KB
       }
     }
     // Audio media
     else if (tag === 'AUDIO' || src.includes('.mp3') || src.includes('.wav') || src.includes('.ogg')) {
-      bytes = 350000; // ~350 KB
+      bytes = 180000; // ~180 KB
     }
     // Vector SVG
     else if (src.endsWith('.svg') || src.includes('.svg?') || src.startsWith('data:image/svg')) {
-      bytes = Math.max(1500, Math.min(35000, Math.round(width * height * 0.04)));
+      bytes = Math.max(800, Math.min(25000, Math.round(pixels * 0.02)));
     }
     // Animated GIF
     else if (src.endsWith('.gif') || src.includes('.gif?')) {
-      bytes = Math.max(120000, Math.min(4200000, Math.round(physicalPixels * 0.85)));
+      bytes = Math.max(8000, Math.min(1200000, Math.round(pixels * 0.35)));
     }
-    // Standard Raster Web Images (JPEG, WebP, PNG, AVIF) & CSS Backgrounds
+    // Standard Compressed Web Images (WebP, AVIF, JPEG, PNG)
     else {
-      // Calibrated compression curve:
-      // - Micro icons / badges (< 60px): 0.42 bytes/pixel (~1.2 KB - 6 KB)
-      // - Thumbnails (60px - 250px): 0.32 bytes/pixel (~10 KB - 55 KB)
-      // - Standard content (250px - 700px): 0.25 bytes/pixel (~75 KB - 280 KB)
-      // - Large hero banners (> 700px): 0.20 bytes/pixel (~300 KB - 1.8 MB)
-      let factor = 0.25;
-      if (width < 60 && height < 60) {
-        factor = 0.42;
-      } else if (width > 700 || height > 500) {
-        factor = 0.20;
-      } else if (width <= 250) {
-        factor = 0.32;
+      // Calibrated against real-world web images (Google Web Almanac: median web image is ~35-70 KB)
+      let factor = 0.05;
+      if (width < 80 && height < 80) {
+        factor = 0.08;
+      } else if (width <= 400 && height <= 400) {
+        factor = 0.06;
+      } else if (width > 900 || height > 600) {
+        factor = 0.04;
       }
 
-      bytes = Math.round(physicalPixels * factor);
-      bytes = Math.max(1200, Math.min(4500000, bytes));
+      bytes = Math.round(pixels * factor);
+      bytes = Math.max(400, Math.min(850000, bytes));
     }
 
     element.dataset.skelioSavedBytes = String(bytes);
 
-    // Asynchronously query background worker for exact Content-Length if URL is valid http/https
-    const fullUrl = element.dataset.skelioOriginalSrc;
+    // Asynchronously query background worker for exact Content-Length via zero-body HEAD / Range request
+    const fullUrl = element.dataset.skelioOriginalSrc || element.getAttribute('src');
     if (fullUrl && (fullUrl.startsWith('http://') || fullUrl.startsWith('https://')) && !element.dataset.skelioQueriedCl) {
       element.dataset.skelioQueriedCl = 'true';
       sendToBackground({ action: 'GET_RESOURCE_SIZE', url: fullUrl }).then(res => {
         if (res && res.success && res.size > 0) {
           element.dataset.skelioSavedBytes = String(res.size);
+          element.dataset.skelioExact = 'true';
           syncStats();
         }
       }).catch(() => {});
@@ -1576,15 +1622,126 @@
     return bytes;
   }
 
+  function getActiveFontSavings() {
+    if (!fontStyleEl) return 0;
+    let fontCount = 0;
+    try {
+      const fontLinks = document.querySelectorAll('link[href*="fonts.googleapis"], link[href*="use.typekit"], link[href*=".woff"], link[rel="preload"][as="font"]');
+      fontCount += fontLinks.length;
+
+      // Check document stylesheets for @font-face rules
+      if (fontCount === 0 && document.styleSheets) {
+        for (let i = 0; i < Math.min(document.styleSheets.length, 8); i++) {
+          try {
+            const sheet = document.styleSheets[i];
+            if (sheet && sheet.cssRules) {
+              for (let j = 0; j < Math.min(sheet.cssRules.length, 15); j++) {
+                if (sheet.cssRules[j].type === CSSRule.FONT_FACE_RULE) {
+                  fontCount++;
+                  break;
+                }
+              }
+            }
+          } catch (e) {}
+        }
+      }
+    } catch (e) {}
+
+    // Only count if web fonts actually exist on the page (~26 KB per WOFF2 font family)
+    return fontCount > 0 ? Math.min(fontCount * 26000, 110000) : 0;
+  }
+
+  function getActive3DSavings() {
+    if (!threeDStyleEl) return 0;
+    let savings = 0;
+    try {
+      const canvases = document.querySelectorAll('canvas');
+      for (const canvas of canvases) {
+        const is3D = canvas.id?.includes('webgl') || canvas.className?.includes('webgl') ||
+                     canvas.id?.includes('canvas3d') || canvas.getAttribute('data-engine') ||
+                     (canvas.width >= 400 && canvas.height >= 300);
+        if (is3D) {
+          savings += Math.min(Math.round(canvas.width * canvas.height * 0.25), 450000);
+        }
+      }
+      const models = document.querySelectorAll('model-viewer, [data-3d-model]');
+      if (models.length > 0) {
+        savings += models.length * 650000;
+      }
+    } catch (e) {}
+    return savings;
+  }
+
+  function getActualPageTransferredBytes() {
+    let totalBytes = 0;
+    try {
+      // 1. Navigation Timing entry (the initial HTML document wire transfer)
+      const navEntries = performance.getEntriesByType('navigation');
+      if (navEntries && navEntries.length > 0) {
+        const nav = navEntries[0];
+        if (typeof nav.transferSize === 'number' && nav.transferSize > 0) {
+          totalBytes += nav.transferSize;
+        } else if (typeof nav.encodedBodySize === 'number' && nav.encodedBodySize > 0) {
+          totalBytes += nav.encodedBodySize;
+        } else if (typeof nav.decodedBodySize === 'number' && nav.decodedBodySize > 0) {
+          totalBytes += nav.decodedBodySize;
+        } else {
+          totalBytes += (document.documentElement.outerHTML || '').length;
+        }
+      } else {
+        totalBytes += (document.documentElement.outerHTML || '').length;
+      }
+
+      // 2. Resource Timing entries (subresources: scripts, CSS, fonts, fetches, allowed media)
+      const resources = performance.getEntriesByType('resource') || [];
+      for (let i = 0; i < resources.length; i++) {
+        const r = resources[i];
+        if (typeof r.transferSize === 'number' && r.transferSize > 0) {
+          totalBytes += r.transferSize;
+        } else if (typeof r.encodedBodySize === 'number' && r.encodedBodySize > 0) {
+          totalBytes += r.encodedBodySize;
+        } else if (typeof r.decodedBodySize === 'number' && r.decodedBodySize > 0) {
+          totalBytes += r.decodedBodySize;
+        } else {
+          // Cross-origin resource without Timing-Allow-Origin:
+          // Provide a realistic wire estimate based on resource type and URL
+          const name = (r.name || '').toLowerCase();
+          const type = (r.initiatorType || '').toLowerCase();
+          if (!name.startsWith('data:') && !name.startsWith('blob:')) {
+            if (name.includes('.woff2') || name.includes('.woff') || name.includes('.ttf') || type === 'font') {
+              totalBytes += 28000;
+            } else if (name.includes('.js') || type === 'script') {
+              totalBytes += 32000;
+            } else if (name.includes('.css') || type === 'link' || type === 'css') {
+              totalBytes += 12000;
+            } else if (type === 'img' || name.match(/\.(png|jpe?g|webp|avif|gif|svg)/i)) {
+              totalBytes += 22000;
+            } else if (type === 'fetch' || type === 'xmlhttprequest') {
+              totalBytes += 2000;
+            } else {
+              totalBytes += 1500;
+            }
+          }
+        }
+      }
+    } catch (e) {}
+
+    return Math.max(1024, Math.round(totalBytes));
+  }
+
   let statsSyncTimer = null;
 
   function syncStats() {
+    const pageHref = (window.location.href || '').toLowerCase();
+    if (pageHref.includes('dashboard.html') || pageHref.includes('login.html')) return;
     if (statsSyncTimer) clearTimeout(statsSyncTimer);
     statsSyncTimer = setTimeout(async () => {
       try {
         const lockedEls = document.querySelectorAll(`[${SKELIO_ATTR}]`);
         const lockedBgs = document.querySelectorAll(`[${SKELIO_BG_ATTR}]`);
-        const extras = (fontStyleEl ? 1 : 0) + (threeDStyleEl ? 1 : 0);
+        const fontSavings = getActiveFontSavings();
+        const threeDSavings = getActive3DSavings();
+        const extras = (fontSavings > 0 ? 1 : 0) + (threeDSavings > 0 ? 1 : 0);
         const currentPageBlocked = lockedEls.length + lockedBgs.length + extras;
         const currentPageShifts = lockedEls.length + lockedBgs.length;
 
@@ -1596,8 +1753,13 @@
         lockedBgs.forEach(el => {
           currentPageBandwidth += calculateElementSavings(el, true);
         });
-        if (fontStyleEl) currentPageBandwidth += 140000; // ~140 KB saved for custom web fonts
-        if (threeDStyleEl) currentPageBandwidth += 2800000; // ~2.8 MB saved for 3D/WebGL meshes & shaders
+        currentPageBandwidth += fontSavings;
+        currentPageBandwidth += threeDSavings;
+
+        // Calculate REAL network data transferred
+        const pageTransferred = getActualPageTransferredBytes();
+        // Potential Data = Actual Transferred + Data Saved
+        const potential = pageTransferred + currentPageBandwidth;
 
         const data = await chrome.storage.local.get([
           'layoutShiftsPrevented',
@@ -1606,11 +1768,6 @@
           'skelio_domain_stats'
         ]);
 
-        const totalBlocked = Math.max(data.totalBlockedResources || 0, blockedResourcesCount, currentPageBlocked);
-        const totalShifts = Math.max(data.layoutShiftsPrevented || 0, layoutShiftsPrevented, currentPageShifts);
-        const totalBandwidth = Math.max(data.totalBandwidthSaved || 0, currentPageBandwidth);
-
-        // Record real per-website tracking for SkelIO Dashboard
         let domain = window.location.hostname.replace(/^www\./, '');
         if (!domain) {
           if (window.location.protocol === 'file:') {
@@ -1618,31 +1775,40 @@
           }
         }
 
-        const isSkelIOPages = window.location.href.includes('dashboard.html') || window.location.href.includes('login.html');
         const domainStats = data.skelio_domain_stats || {};
 
-        if (domain && !isSkelIOPages) {
-          let pageTransferred = 450000;
-          try {
-            const entries = performance.getEntriesByType('resource');
-            if (entries && entries.length > 0) {
-              const sum = entries.reduce((acc, r) => acc + (r.transferSize || 0), 0);
-              if (sum > 0) pageTransferred = sum;
-            }
-          } catch (e) {}
+        if (domain) {
+          const existing = domainStats[domain] || {};
+          const savedForDomain = Math.max(existing.bandwidthSaved || 0, currentPageBandwidth);
+          const actualForDomain = Math.max(existing.actualBytes || 0, pageTransferred);
+          const potentialForDomain = actualForDomain + savedForDomain;
 
-          const potential = pageTransferred + currentPageBandwidth;
           domainStats[domain] = {
             domain: domain,
             archetype: currentArchetype || 'STANDARD',
-            blocked: Math.max(domainStats[domain]?.blocked || 0, currentPageBlocked),
-            shifts: Math.max(domainStats[domain]?.shifts || 0, currentPageShifts),
-            bandwidthSaved: Math.max(domainStats[domain]?.bandwidthSaved || 0, currentPageBandwidth),
-            potentialBytes: Math.max(domainStats[domain]?.potentialBytes || 0, potential),
-            actualBytes: pageTransferred,
+            blocked: Math.max(existing.blocked || 0, currentPageBlocked),
+            shifts: Math.max(existing.shifts || 0, currentPageShifts),
+            bandwidthSaved: savedForDomain,
+            actualBytes: actualForDomain,
+            potentialBytes: potentialForDomain,
             lastUpdated: Date.now()
           };
         }
+
+        // Sum up exact totals across all domain records for 100% consistency
+        let totalBandwidth = 0;
+        let totalShifts = 0;
+        let totalBlocked = 0;
+        for (const key of Object.keys(domainStats)) {
+          const d = domainStats[key];
+          totalBandwidth += (d.bandwidthSaved || 0);
+          totalShifts += (d.shifts || 0);
+          totalBlocked += (d.blocked || 0);
+        }
+
+        totalBandwidth = Math.max(data.totalBandwidthSaved || 0, totalBandwidth);
+        totalShifts = Math.max(data.layoutShiftsPrevented || 0, totalShifts);
+        totalBlocked = Math.max(data.totalBlockedResources || 0, totalBlocked);
 
         // Bridge directly to SkelIO website localStorage if on SkelIO website
         try {
@@ -1687,11 +1853,42 @@
   // Real-time synchronization of user profiles and domain statistics
   // ============================================================================
 
-  function initSkelIOBridge() {
-    const href = (window.location.href || '').toLowerCase();
-    const isSkelIOWebsite = href.includes('dashboard.html') || href.includes('login.html') || href.includes('index.html') || href.includes('skelio');
+  function isSkelIOWebsitePage() {
+    try {
+      const host = (window.location.hostname || '').toLowerCase();
+      // Strictly exclude third-party platforms like Figma, Canva, GitHub, etc.
+      if (host.includes('figma.com') || host.includes('canva.com') || host.includes('github.com') ||
+          host.includes('google.com') || host.includes('notion.so') || host.includes('miro.com')) {
+        return false;
+      }
 
-    if (!isSkelIOWebsite) return;
+      // Check explicit meta tag
+      if (document.querySelector('meta[name="skelio-app"]')) {
+        return true;
+      }
+
+      // Check file protocol strictly in SkelIO directory
+      if (window.location.protocol === 'file:') {
+        const path = (window.location.pathname || '').toLowerCase();
+        return path.includes('skelio') && (path.includes('dashboard.html') || path.includes('login.html') || path.includes('index.html'));
+      }
+
+      // Check local dev server
+      if (host === 'localhost' || host === '127.0.0.1') {
+        const path = (window.location.pathname || '').toLowerCase();
+        return path.includes('dashboard.html') || path.includes('login.html') || path.includes('index.html') || path === '/';
+      }
+
+      // Check official production domains
+      if (host === 'skelio.com' || host.endsWith('.skelio.com') || host === 'skelio.io' || host.endsWith('.skelio.io')) {
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  function initSkelIOBridge() {
+    if (!isSkelIOWebsitePage()) return;
 
     try {
       chrome.storage.local.set({ skelio_website_url: window.location.href });
@@ -1703,24 +1900,34 @@
         const profileStr = window.localStorage.getItem('skelio_user_profile');
         if (profileStr) {
           const profile = JSON.parse(profileStr);
-          if (profile && profile.name) {
-            chrome.storage.local.set({
-              skelio_user_profile: profile,
-              skelio_website_url: window.location.href
-            });
-          }
-        } else if (href.includes('login.html') || href.includes('dashboard.html')) {
-          // If website has no profile stored on login or dashboard, ensure extension storage is cleared too
-          chrome.storage.local.remove(['skelio_user_profile']);
-        }
+          if (profile && profile.name && profile.email) {
+            const userEmail = profile.email.toLowerCase();
+            chrome.storage.local.get(['active_user_email', 'skelio_user_profile'], (res) => {
+              const currentActiveEmail = res?.active_user_email || res?.skelio_user_profile?.email?.toLowerCase();
+              if (currentActiveEmail && currentActiveEmail !== userEmail) {
+                // User changed on page -> load user's isolated data
+                const domainStatsStr = window.localStorage.getItem('skelio_domain_stats');
+                const bw = window.localStorage.getItem('skelio_total_bandwidth') || '0';
+                const shifts = window.localStorage.getItem('skelio_total_shifts') || '0';
+                const blk = window.localStorage.getItem('skelio_total_blocked') || '0';
+                const stats = domainStatsStr ? JSON.parse(domainStatsStr) : {};
 
-        const domainStatsStr = window.localStorage.getItem('skelio_domain_stats');
-        if (domainStatsStr) {
-          const stats = JSON.parse(domainStatsStr);
-          if (stats && Object.keys(stats).length > 0) {
-            chrome.storage.local.get(['skelio_domain_stats'], (res) => {
-              const merged = Object.assign({}, res?.skelio_domain_stats || {}, stats);
-              chrome.storage.local.set({ skelio_domain_stats: merged });
+                chrome.storage.local.set({
+                  skelio_user_profile: profile,
+                  active_user_email: userEmail,
+                  skelio_website_url: window.location.href,
+                  skelio_domain_stats: stats,
+                  totalBandwidthSaved: parseFloat(bw) || 0,
+                  layoutShiftsPrevented: parseInt(shifts, 10) || 0,
+                  totalBlockedResources: parseInt(blk, 10) || 0
+                });
+              } else {
+                chrome.storage.local.set({
+                  skelio_user_profile: profile,
+                  active_user_email: userEmail,
+                  skelio_website_url: window.location.href
+                });
+              }
             });
           }
         }
@@ -1730,25 +1937,20 @@
     // 2. Sync from Extension Chrome Storage -> Page LocalStorage
     function pushToPage() {
       try {
-        // NEVER resurrect a profile into login.html — login page is for signing in/up
-        if (href.includes('login.html')) return;
-
+        const href = (window.location.href || '').toLowerCase();
         chrome.storage.local.get([
           'skelio_user_profile',
+          'active_user_email',
           'skelio_domain_stats',
           'totalBandwidthSaved',
           'layoutShiftsPrevented',
           'totalBlockedResources'
         ], (data) => {
           if (!data) return;
-          if (data.skelio_user_profile && !window.localStorage.getItem('skelio_user_profile')) {
-            window.localStorage.setItem('skelio_user_profile', JSON.stringify(data.skelio_user_profile));
-            if (typeof window.loadUserProfile === 'function') window.loadUserProfile();
-          }
-          if (data.skelio_domain_stats) {
-            const localStats = JSON.parse(window.localStorage.getItem('skelio_domain_stats') || '{}');
-            const merged = Object.assign({}, localStats, data.skelio_domain_stats);
-            window.localStorage.setItem('skelio_domain_stats', JSON.stringify(merged));
+
+          // Push metrics to page localStorage so dashboard can display real metrics immediately
+          if (data.skelio_domain_stats && Object.keys(data.skelio_domain_stats).length > 0) {
+            window.localStorage.setItem('skelio_domain_stats', JSON.stringify(data.skelio_domain_stats));
           }
           if (data.totalBandwidthSaved !== undefined) {
             window.localStorage.setItem('skelio_total_bandwidth', String(data.totalBandwidthSaved));
@@ -1759,8 +1961,16 @@
           if (data.totalBlockedResources !== undefined) {
             window.localStorage.setItem('skelio_total_blocked', String(data.totalBlockedResources));
           }
+
+          // Push profile if not on login page
+          if (!href.includes('login.html') && data.skelio_user_profile && data.skelio_user_profile.name) {
+            window.localStorage.setItem('skelio_user_profile', JSON.stringify(data.skelio_user_profile));
+          }
+
+          // Notify page
           window.postMessage({ type: 'SKELIO_STATS_UPDATED' }, '*');
           if (typeof window.loadRealData === 'function') window.loadRealData();
+          if (typeof window.loadUserProfile === 'function') window.loadUserProfile();
         });
       } catch (e) {}
     }
@@ -1773,14 +1983,55 @@
       if (!event.data) return;
       if (event.data.type === 'SKELIO_PROFILE_UPDATED' && event.data.profile) {
         try {
-          chrome.storage.local.set({
+          const userEmail = event.data.profile?.email?.toLowerCase();
+          const updatePayload = {
             skelio_user_profile: event.data.profile,
+            active_user_email: userEmail,
             skelio_website_url: window.location.href
-          });
+          };
+          if (event.data.domainStats) updatePayload.skelio_domain_stats = event.data.domainStats;
+          if (event.data.totalBandwidth !== undefined) updatePayload.totalBandwidthSaved = parseFloat(event.data.totalBandwidth) || 0;
+          if (event.data.totalShifts !== undefined) updatePayload.layoutShiftsPrevented = parseInt(event.data.totalShifts, 10) || 0;
+          chrome.storage.local.set(updatePayload);
         } catch (e) {}
       } else if (event.data.type === 'SKELIO_PROFILE_LOGOUT') {
+        layoutShiftsPrevented = 0;
+        blockedResourcesCount = 0;
         try {
-          chrome.storage.local.remove(['skelio_user_profile']);
+          chrome.storage.local.remove([
+            'skelio_user_profile',
+            'active_user_email',
+            'skelio_domain_stats',
+            'totalBandwidthSaved',
+            'layoutShiftsPrevented',
+            'totalBlockedResources',
+            'pageBlocked',
+            'pageShifts',
+            'pageBandwidth'
+          ]);
+        } catch (e) {}
+      } else if (event.data.type === 'SKELIO_STATS_RESET') {
+        layoutShiftsPrevented = 0;
+        blockedResourcesCount = 0;
+        try {
+          chrome.storage.local.remove([
+            'skelio_domain_stats',
+            'totalBandwidthSaved',
+            'layoutShiftsPrevented',
+            'totalBlockedResources',
+            'pageBlocked',
+            'pageShifts',
+            'pageBandwidth'
+          ]);
+          chrome.storage.local.set({
+            skelio_domain_stats: {},
+            totalBandwidthSaved: 0,
+            layoutShiftsPrevented: 0,
+            totalBlockedResources: 0,
+            pageBlocked: 0,
+            pageShifts: 0,
+            pageBandwidth: 0
+          });
         } catch (e) {}
       } else if (event.data.type === 'SKELIO_REQUEST_SYNC') {
         pushToPage();
@@ -1792,6 +2043,7 @@
         try {
           chrome.storage.local.set({
             skelio_user_profile: event.detail,
+            active_user_email: event.detail.email?.toLowerCase(),
             skelio_website_url: window.location.href
           });
         } catch (e) {}
@@ -1799,8 +2051,45 @@
     });
 
     document.addEventListener('SKELIO_PROFILE_LOGOUT', () => {
+      layoutShiftsPrevented = 0;
+      blockedResourcesCount = 0;
       try {
-        chrome.storage.local.remove(['skelio_user_profile']);
+        chrome.storage.local.remove([
+          'skelio_user_profile',
+          'active_user_email',
+          'skelio_domain_stats',
+          'totalBandwidthSaved',
+          'layoutShiftsPrevented',
+          'totalBlockedResources',
+          'pageBlocked',
+          'pageShifts',
+          'pageBandwidth'
+        ]);
+      } catch (e) {}
+    });
+
+    document.addEventListener('SKELIO_STATS_RESET', () => {
+      layoutShiftsPrevented = 0;
+      blockedResourcesCount = 0;
+      try {
+        chrome.storage.local.remove([
+          'skelio_domain_stats',
+          'totalBandwidthSaved',
+          'layoutShiftsPrevented',
+          'totalBlockedResources',
+          'pageBlocked',
+          'pageShifts',
+          'pageBandwidth'
+        ]);
+        chrome.storage.local.set({
+          skelio_domain_stats: {},
+          totalBandwidthSaved: 0,
+          layoutShiftsPrevented: 0,
+          totalBlockedResources: 0,
+          pageBlocked: 0,
+          pageShifts: 0,
+          pageBandwidth: 0
+        });
       } catch (e) {}
     });
 
@@ -1812,21 +2101,57 @@
     try {
       chrome.storage.onChanged.addListener((changes, area) => {
         if (area === 'local') {
+          const href = (window.location.href || '').toLowerCase();
           if (changes.skelio_user_profile) {
             if (changes.skelio_user_profile.newValue) {
               window.localStorage.setItem('skelio_user_profile', JSON.stringify(changes.skelio_user_profile.newValue));
               if (typeof window.loadUserProfile === 'function') window.loadUserProfile();
             } else {
               window.localStorage.removeItem('skelio_user_profile');
+              window.localStorage.removeItem('skelio_domain_stats');
+              window.localStorage.removeItem('skelio_total_bandwidth');
+              window.localStorage.removeItem('skelio_total_shifts');
+              window.localStorage.removeItem('skelio_total_blocked');
               document.documentElement.removeAttribute('data-skelio-profile');
               if (href.includes('dashboard.html')) {
                 window.location.href = 'login.html';
               }
             }
           }
-          if (changes.skelio_domain_stats && changes.skelio_domain_stats.newValue) {
-            window.localStorage.setItem('skelio_domain_stats', JSON.stringify(changes.skelio_domain_stats.newValue));
+          if (changes.skelio_domain_stats) {
+            if (changes.skelio_domain_stats.newValue && Object.keys(changes.skelio_domain_stats.newValue).length > 0) {
+              window.localStorage.setItem('skelio_domain_stats', JSON.stringify(changes.skelio_domain_stats.newValue));
+            } else {
+              window.localStorage.removeItem('skelio_domain_stats');
+              layoutShiftsPrevented = 0;
+              blockedResourcesCount = 0;
+            }
             if (typeof window.loadRealData === 'function') window.loadRealData();
+          }
+          if (changes.totalBandwidthSaved) {
+            if (changes.totalBandwidthSaved.newValue !== undefined && changes.totalBandwidthSaved.newValue !== null) {
+              window.localStorage.setItem('skelio_total_bandwidth', String(changes.totalBandwidthSaved.newValue));
+            } else {
+              window.localStorage.removeItem('skelio_total_bandwidth');
+            }
+            if (typeof window.loadRealData === 'function') window.loadRealData();
+          }
+          if (changes.layoutShiftsPrevented) {
+            if (changes.layoutShiftsPrevented.newValue !== undefined && changes.layoutShiftsPrevented.newValue !== null) {
+              window.localStorage.setItem('skelio_total_shifts', String(changes.layoutShiftsPrevented.newValue));
+            } else {
+              window.localStorage.removeItem('skelio_total_shifts');
+              layoutShiftsPrevented = 0;
+            }
+            if (typeof window.loadRealData === 'function') window.loadRealData();
+          }
+          if (changes.totalBlockedResources) {
+            if (changes.totalBlockedResources.newValue !== undefined && changes.totalBlockedResources.newValue !== null) {
+              window.localStorage.setItem('skelio_total_blocked', String(changes.totalBlockedResources.newValue));
+            } else {
+              window.localStorage.removeItem('skelio_total_blocked');
+              blockedResourcesCount = 0;
+            }
           }
         }
       });
@@ -1950,6 +2275,10 @@
     } else if (message.action === 'SKELIO_DEACTIVATE') {
       deactivateSkelIO();
       sendResponse({ success: true, active: isActive });
+    } else if (message.action === 'SKELIO_RESET_STATS') {
+      layoutShiftsPrevented = 0;
+      blockedResourcesCount = 0;
+      sendResponse({ success: true });
     } else if (message.action === 'SKELIO_STATUS') {
       const lockedEls = document.querySelectorAll(`[${SKELIO_ATTR}]`);
       const lockedBgs = document.querySelectorAll(`[${SKELIO_BG_ATTR}]`);
@@ -2055,6 +2384,12 @@
 
     // Initialize website synchronization bridge
     initSkelIOBridge();
+    if (typeof document !== 'undefined') {
+      document.addEventListener('DOMContentLoaded', initSkelIOBridge);
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('load', initSkelIOBridge);
+    }
 
     console.log('[SkelIO] Content script initialized, active:', isActive);
   }

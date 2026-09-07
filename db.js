@@ -270,8 +270,8 @@ function syncDashboardData(userId, payload) {
       ON CONFLICT(user_id, domain) DO UPDATE SET
         archetype = excluded.archetype,
         bandwidth_saved = MAX(domain_records.bandwidth_saved, excluded.bandwidth_saved),
-        actual_bytes = excluded.actual_bytes,
-        potential_bytes = MAX(domain_records.potential_bytes, excluded.potential_bytes),
+        actual_bytes = CASE WHEN excluded.actual_bytes > 0 THEN excluded.actual_bytes ELSE domain_records.actual_bytes END,
+        potential_bytes = MAX(domain_records.bandwidth_saved, excluded.bandwidth_saved) + CASE WHEN excluded.actual_bytes > 0 THEN excluded.actual_bytes ELSE domain_records.actual_bytes END,
         shifts = MAX(domain_records.shifts, excluded.shifts),
         blocked = MAX(domain_records.blocked, excluded.blocked),
         last_updated = excluded.last_updated
@@ -280,8 +280,8 @@ function syncDashboardData(userId, payload) {
     for (const d of domains) {
       if (!d.domain) continue;
       const saved = Math.max(0, Math.round(Number(d.bandwidthSaved) || 0));
-      const used = Math.max(10000, Math.round(Number(d.actualBytes) || 350000));
-      const pot = Math.max(saved + used, Math.round(Number(d.potentialBytes) || (saved + used)));
+      const used = Math.max(0, Math.round(Number(d.actualBytes) || 0));
+      const pot = saved + used;
       const sh = Math.max(0, Math.round(Number(d.shifts) || 0));
       const blk = Math.max(0, Math.round(Number(d.blocked) || sh));
 

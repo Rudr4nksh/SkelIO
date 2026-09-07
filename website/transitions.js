@@ -244,11 +244,56 @@
   document.addEventListener('click', (e) => {
     if (e.target && (e.target.id === 'homeSignOutBtn' || e.target.closest('#homeSignOutBtn'))) {
       e.preventDefault();
+      let userEmail = null;
+      try {
+        const stored = localStorage.getItem('skelio_user_profile');
+        if (stored) {
+          userEmail = JSON.parse(stored)?.email?.toLowerCase();
+        }
+      } catch (e) {}
+
+      // 1. Archive current user's active stats
+      if (userEmail) {
+        const stats = localStorage.getItem('skelio_domain_stats');
+        const bw = localStorage.getItem('skelio_total_bandwidth');
+        const shifts = localStorage.getItem('skelio_total_shifts');
+        const blk = localStorage.getItem('skelio_total_blocked');
+        if (stats || bw || shifts) {
+          localStorage.setItem(`skelio_user_data_${userEmail}`, JSON.stringify({
+            domainStats: stats ? JSON.parse(stats) : {},
+            totalBandwidth: bw || '0',
+            totalShifts: shifts || '0',
+            totalBlocked: blk || '0'
+          }));
+        }
+      }
+
+      // 2. Wipe active session keys from localStorage
       localStorage.removeItem('skelio_user_profile');
+      localStorage.removeItem('skelio_domain_stats');
+      localStorage.removeItem('skelio_total_bandwidth');
+      localStorage.removeItem('skelio_total_shifts');
+      localStorage.removeItem('skelio_total_blocked');
       document.documentElement.removeAttribute('data-skelio-profile');
+
+      // 3. Broadcast logout signal
+      window.postMessage({ type: 'SKELIO_PROFILE_LOGOUT' }, '*');
+      document.dispatchEvent(new CustomEvent('SKELIO_PROFILE_LOGOUT'));
+
+      // 4. Wipe active session keys from extension storage
       try {
         if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-          chrome.storage.local.remove(['skelio_user_profile']);
+          chrome.storage.local.remove([
+            'skelio_user_profile',
+            'active_user_email',
+            'skelio_domain_stats',
+            'totalBandwidthSaved',
+            'layoutShiftsPrevented',
+            'totalBlockedResources',
+            'pageBlocked',
+            'pageShifts',
+            'pageBandwidth'
+          ]);
         }
       } catch (err) {}
       syncAuthUI();

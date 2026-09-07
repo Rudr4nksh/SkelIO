@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="skelio-app" content="website">
   <title>SkelIO - Bandwidth & Stability Dashboard</title>
   <link rel="icon" type="image/png" href="../extension/icons/icon32.png">
   <!-- Google Fonts: Newsreader (Editorial Serif), Plus Jakarta Sans (Clean UI), Caveat (Handwritten annotations) -->
@@ -640,6 +641,17 @@
       transform: scale(0.94);
     }
 
+    .reset-ledger-btn {
+      color: #EF4444;
+      border-color: rgba(239, 68, 68, 0.25);
+    }
+
+    .reset-ledger-btn:hover {
+      border-color: #EF4444;
+      background: rgba(239, 68, 68, 0.05);
+      box-shadow: 0 4px 12px -2px rgba(239, 68, 68, 0.2);
+    }
+
     /* Live Beacon Radar Pulse for Sync Dot */
     @keyframes liveBeaconPulse {
       0% {
@@ -966,6 +978,12 @@
               <span class="sync-dot"></span>
               <span id="syncBtnText">Live Sync</span>
             </button>
+
+            <!-- Reset Ledger Button -->
+            <button class="sync-now-btn reset-ledger-btn" id="resetLedgerBtn" title="Reset all tracked statistics to zero">
+              <svg viewBox="0 0 24 24" style="width: 13px; height: 13px; fill: currentColor;"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+              <span id="resetBtnText">Reset Stats</span>
+            </button>
           </div>
         </div>
 
@@ -1067,22 +1085,63 @@
       // Logout / Sign In handler
       document.getElementById('dashLogoutBtn').addEventListener('click', (e) => {
         e.preventDefault();
-        const stored = localStorage.getItem('skelio_user_profile');
-        if (stored) {
-          localStorage.removeItem('skelio_user_profile');
-          document.documentElement.removeAttribute('data-skelio-profile');
-          window.postMessage({ type: 'SKELIO_PROFILE_LOGOUT' }, '*');
-          document.dispatchEvent(new CustomEvent('SKELIO_PROFILE_LOGOUT'));
-          try {
-            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-              chrome.storage.local.remove(['skelio_user_profile'], () => {
-                window.location.href = 'login.html';
-              });
-              setTimeout(() => { window.location.href = 'login.html'; }, 120);
-              return;
-            }
-          } catch (err) {}
+        let userEmail = null;
+        try {
+          const stored = localStorage.getItem('skelio_user_profile');
+          if (stored) {
+            userEmail = JSON.parse(stored)?.email?.toLowerCase();
+          }
+        } catch (e) {}
+
+        // 1. Archive current user's active stats before wiping session
+        if (userEmail) {
+          const stats = localStorage.getItem('skelio_domain_stats');
+          const bw = localStorage.getItem('skelio_total_bandwidth');
+          const shifts = localStorage.getItem('skelio_total_shifts');
+          const blk = localStorage.getItem('skelio_total_blocked');
+          if (stats || bw || shifts) {
+            localStorage.setItem(`skelio_user_data_${userEmail}`, JSON.stringify({
+              domainStats: stats ? JSON.parse(stats) : {},
+              totalBandwidth: bw || '0',
+              totalShifts: shifts || '0',
+              totalBlocked: blk || '0'
+            }));
+          }
         }
+
+        // 2. Wipe active session keys from website localStorage
+        localStorage.removeItem('skelio_user_profile');
+        localStorage.removeItem('skelio_domain_stats');
+        localStorage.removeItem('skelio_total_bandwidth');
+        localStorage.removeItem('skelio_total_shifts');
+        localStorage.removeItem('skelio_total_blocked');
+        document.documentElement.removeAttribute('data-skelio-profile');
+
+        // 3. Broadcast logout signal to extension and other tabs
+        window.postMessage({ type: 'SKELIO_PROFILE_LOGOUT' }, '*');
+        document.dispatchEvent(new CustomEvent('SKELIO_PROFILE_LOGOUT'));
+
+        // 4. Wipe active session keys from extension storage
+        try {
+          if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            chrome.storage.local.remove([
+              'skelio_user_profile',
+              'active_user_email',
+              'skelio_domain_stats',
+              'totalBandwidthSaved',
+              'layoutShiftsPrevented',
+              'totalBlockedResources',
+              'pageBlocked',
+              'pageShifts',
+              'pageBandwidth'
+            ], () => {
+              window.location.href = 'login.html';
+            });
+            setTimeout(() => { window.location.href = 'login.html'; }, 120);
+            return;
+          }
+        } catch (err) {}
+
         window.location.href = 'login.html';
       });
 
@@ -1114,8 +1173,8 @@
             if (data.skelio_domain_stats) {
               domainStats = Object.assign({}, data.skelio_domain_stats);
             }
-            if (data.layoutShiftsPrevented) totalShiftsGlobal = data.layoutShiftsPrevented;
-            if (data.totalBandwidthSaved) totalBandwidthGlobal = data.totalBandwidthSaved;
+            if (data.layoutShiftsPrevented !== undefined) totalShiftsGlobal = data.layoutShiftsPrevented;
+            if (data.totalBandwidthSaved !== undefined) totalBandwidthGlobal = data.totalBandwidthSaved;
           }
         } catch (e) {}
 
@@ -1127,72 +1186,16 @@
             domainStats = Object.assign(domainStats, parsed);
           }
           const storedBw = localStorage.getItem('skelio_total_bandwidth');
-          if (storedBw && parseFloat(storedBw) > totalBandwidthGlobal) {
-            totalBandwidthGlobal = parseFloat(storedBw);
+          if (storedBw !== null) {
+            const bwNum = parseFloat(storedBw) || 0;
+            if (bwNum > totalBandwidthGlobal || totalBandwidthGlobal === 0) totalBandwidthGlobal = bwNum;
           }
           const storedShifts = localStorage.getItem('skelio_total_shifts');
-          if (storedShifts && parseInt(storedShifts, 10) > totalShiftsGlobal) {
-            totalShiftsGlobal = parseInt(storedShifts, 10);
+          if (storedShifts !== null) {
+            const shiftsNum = parseInt(storedShifts, 10) || 0;
+            if (shiftsNum > totalShiftsGlobal || totalShiftsGlobal === 0) totalShiftsGlobal = shiftsNum;
           }
         } catch (e) {}
-
-        // If no sites recorded yet, initialize baseline websites so ledger is populated immediately
-        if (Object.keys(domainStats).length === 0) {
-          const baselineWebsites = {
-            'c2c.sh': {
-              domain: 'c2c.sh',
-              archetype: 'SCROLL_SHOWCASE',
-              blocked: 14,
-              shifts: 14,
-              bandwidthSaved: 2936012, // 2.8 MB
-              actualBytes: 943718,    // 0.9 MB
-              potentialBytes: 3879730, // 3.7 MB
-              lastUpdated: Date.now() - 3600000
-            },
-            'apple.com': {
-              domain: 'apple.com',
-              archetype: 'SCROLL_SHOWCASE',
-              blocked: 22,
-              shifts: 22,
-              bandwidthSaved: 4404019, // 4.2 MB
-              actualBytes: 1468006,   // 1.4 MB
-              potentialBytes: 5872025, // 5.6 MB
-              lastUpdated: Date.now() - 7200000
-            },
-            'nytimes.com': {
-              domain: 'nytimes.com',
-              archetype: 'EDITORIAL',
-              blocked: 8,
-              shifts: 8,
-              bandwidthSaved: 1677721, // 1.6 MB
-              actualBytes: 524288,    // 0.5 MB
-              potentialBytes: 2202009, // 2.1 MB
-              lastUpdated: Date.now() - 10800000
-            },
-            'nike.com': {
-              domain: 'nike.com',
-              archetype: 'E-COMMERCE',
-              blocked: 19,
-              shifts: 19,
-              bandwidthSaved: 3565158, // 3.4 MB
-              actualBytes: 1153433,   // 1.1 MB
-              potentialBytes: 4718591, // 4.5 MB
-              lastUpdated: Date.now() - 14400000
-            },
-            'stripe.com': {
-              domain: 'stripe.com',
-              archetype: 'STANDARD',
-              blocked: 11,
-              shifts: 11,
-              bandwidthSaved: 2202009, // 2.1 MB
-              actualBytes: 734003,    // 0.7 MB
-              potentialBytes: 2936012, // 2.8 MB
-              lastUpdated: Date.now() - 18000000
-            }
-          };
-          domainStats = Object.assign({}, baselineWebsites);
-          localStorage.setItem('skelio_domain_stats', JSON.stringify(domainStats));
-        }
 
         const domainsList = Object.values(domainStats);
         renderDashboard(domainsList, totalShiftsGlobal, totalBandwidthGlobal);
@@ -1218,13 +1221,88 @@
         });
       }
 
-      // Listen for sync messages from extension
+      // Reset button listener
+      const resetBtn = document.getElementById('resetLedgerBtn');
+      if (resetBtn) {
+        resetBtn.addEventListener('click', async () => {
+          if (!confirm('Are you sure you want to reset all tracked statistics to 0?')) return;
+          try {
+            // 1. Wipe localStorage active metrics
+            localStorage.removeItem('skelio_domain_stats');
+            localStorage.removeItem('skelio_total_bandwidth');
+            localStorage.removeItem('skelio_total_shifts');
+            localStorage.removeItem('skelio_total_blocked');
+
+            let currentEmail = null;
+            try {
+              const profileStr = localStorage.getItem('skelio_user_profile');
+              if (profileStr) currentEmail = JSON.parse(profileStr)?.email?.toLowerCase();
+            } catch (e) {}
+
+            if (currentEmail) {
+              localStorage.setItem(`skelio_user_data_${currentEmail}`, JSON.stringify({
+                domainStats: {},
+                totalBandwidth: '0',
+                totalShifts: '0',
+                totalBlocked: '0'
+              }));
+            }
+
+            // 2. Wipe extension storage metrics
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+              await chrome.storage.local.remove([
+                'skelio_domain_stats',
+                'totalBandwidthSaved',
+                'layoutShiftsPrevented',
+                'totalBlockedResources',
+                'pageBlocked',
+                'pageShifts',
+                'pageBandwidth'
+              ]);
+              await chrome.storage.local.set({
+                skelio_domain_stats: {},
+                totalBandwidthSaved: 0,
+                layoutShiftsPrevented: 0,
+                totalBlockedResources: 0,
+                pageBlocked: 0,
+                pageShifts: 0,
+                pageBandwidth: 0
+              });
+            }
+
+            // 3. Broadcast reset signal
+            window.postMessage({ type: 'SKELIO_STATS_RESET' }, '*');
+            document.dispatchEvent(new CustomEvent('SKELIO_STATS_RESET'));
+
+            // 4. Update UI immediately
+            allDomainsCache = [];
+            renderDashboard([], 0, 0);
+
+            const btnText = document.getElementById('resetBtnText');
+            if (btnText) {
+              btnText.textContent = 'Cleared ✓';
+              setTimeout(() => { btnText.textContent = 'Reset Stats'; }, 1800);
+            }
+          } catch (err) {
+            console.warn('Error resetting stats on dashboard:', err);
+          }
+        });
+      }
+
+      // Listen for sync and reset messages from extension
       window.addEventListener('message', (event) => {
         if (!event.data) return;
-        if (event.data.type === 'SKELIO_STATS_UPDATED' || event.data.type === 'SKELIO_PROFILE_UPDATED') {
+        if (event.data.type === 'SKELIO_STATS_RESET') {
+          allDomainsCache = [];
+          renderDashboard([], 0, 0);
+        } else if (event.data.type === 'SKELIO_STATS_UPDATED' || event.data.type === 'SKELIO_PROFILE_UPDATED') {
           loadRealData();
           loadUserProfile();
         }
+      });
+      document.addEventListener('SKELIO_STATS_RESET', () => {
+        allDomainsCache = [];
+        renderDashboard([], 0, 0);
       });
       document.addEventListener('SKELIO_STATS_UPDATED', () => {
         loadRealData();
@@ -1239,7 +1317,10 @@
 
       function formatMB(bytes) {
         if (!bytes || bytes <= 0) return '0.0';
-        return (bytes / (1024 * 1024)).toFixed(1);
+        const mb = bytes / (1024 * 1024);
+        if (mb < 0.01) return '<0.01';
+        if (mb < 0.1) return mb.toFixed(2);
+        return mb.toFixed(1);
       }
 
       // State for search, sort, and pagination
@@ -1263,8 +1344,8 @@
           if (currentSort === 'saved-desc') {
             return (b.bandwidthSaved || 0) - (a.bandwidthSaved || 0);
           } else if (currentSort === 'potential-desc') {
-            const potA = a.potentialBytes || ((a.bandwidthSaved || 0) + (a.actualBytes || 350000));
-            const potB = b.potentialBytes || ((b.bandwidthSaved || 0) + (b.actualBytes || 350000));
+            const potA = a.potentialBytes || ((a.bandwidthSaved || 0) + (a.actualBytes || 0));
+            const potB = b.potentialBytes || ((b.bandwidthSaved || 0) + (b.actualBytes || 0));
             return potB - potA;
           } else if (currentSort === 'shifts-desc') {
             return (b.shifts || 0) - (a.shifts || 0);
@@ -1344,9 +1425,9 @@
         let rowsHtml = '';
         pageItems.forEach(site => {
           const saved = site.bandwidthSaved || 0;
-          const used = site.actualBytes || 350000;
+          const used = site.actualBytes || 0;
           const potential = site.potentialBytes || (saved + used);
-          const percent = potential > 0 ? Math.round((saved / potential) * 100) : 0;
+          const percent = potential > 0 ? Math.min(100, Math.round((saved / potential) * 100)) : 0;
           const domainInitial = (site.domain || 'W')[0].toUpperCase();
 
           rowsHtml += `
@@ -1488,18 +1569,23 @@
 
         // Calculate actual totals from real domains
         let totalSavedBytes = 0;
-        let totalPotentialBytes = 0;
+        let totalActualBytes = 0;
         let totalShifts = 0;
 
         domains.forEach(d => {
-          totalSavedBytes += (d.bandwidthSaved || 0);
-          totalPotentialBytes += (d.potentialBytes || ((d.bandwidthSaved || 0) + (d.actualBytes || 350000)));
+          const s = (d.bandwidthSaved || 0);
+          const u = (d.actualBytes || 0);
+          totalSavedBytes += s;
+          totalActualBytes += u;
           totalShifts += (d.shifts || 0);
         });
 
-        // If global counts are higher, use those
+        // If global counts are higher, synchronize
         if (globalBandwidth && globalBandwidth > totalSavedBytes) totalSavedBytes = globalBandwidth;
         if (globalShifts && globalShifts > totalShifts) totalShifts = globalShifts;
+
+        // Potential Data is mathematically: Actual Transferred + Data Saved
+        const totalPotentialBytes = totalActualBytes + totalSavedBytes;
 
         const savedMB = totalSavedBytes / (1024 * 1024);
         const potentialMB = totalPotentialBytes / (1024 * 1024);
@@ -1509,7 +1595,7 @@
         animateMetricValue('metricTotalShifts', totalShifts, false);
         animateMetricValue('metricTotalSites', domains.length, false);
 
-        const overallPercent = totalPotentialBytes > 0 ? Math.round((totalSavedBytes / totalPotentialBytes) * 100) : 0;
+        const overallPercent = totalPotentialBytes > 0 ? Math.min(100, Math.round((totalSavedBytes / totalPotentialBytes) * 100)) : 0;
         document.getElementById('metricSavedDesc').textContent = `${overallPercent}% net bandwidth reduction`;
 
         // Only update table DOM if domains data actually changed!
@@ -1597,6 +1683,25 @@
           lastUpdated: Date.now()
         };
         localStorage.setItem('skelio_domain_stats', JSON.stringify(stats));
+
+        let currentEmail = null;
+        try {
+          const profileStr = localStorage.getItem('skelio_user_profile');
+          if (profileStr) currentEmail = JSON.parse(profileStr)?.email?.toLowerCase();
+        } catch (e) {}
+
+        if (currentEmail) {
+          const bw = localStorage.getItem('skelio_total_bandwidth') || '0';
+          const sh = localStorage.getItem('skelio_total_shifts') || '0';
+          const blk = localStorage.getItem('skelio_total_blocked') || '0';
+          localStorage.setItem(`skelio_user_data_${currentEmail}`, JSON.stringify({
+            domainStats: stats,
+            totalBandwidth: bw,
+            totalShifts: sh,
+            totalBlocked: blk
+          }));
+        }
+
         try {
           if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
             chrome.storage.local.set({ skelio_domain_stats: stats });

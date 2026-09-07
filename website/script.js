@@ -202,17 +202,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  const worksInteractivePill = document.getElementById('worksPill');
-  if (worksInteractivePill) {
-    worksInteractivePill.addEventListener('click', () => {
-      worksInteractivePill.style.transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-      worksInteractivePill.style.transform = 'rotate(12deg) scale(1.18)';
-      setTimeout(() => {
-        worksInteractivePill.style.transition = '';
-        worksInteractivePill.style.transform = '';
-      }, 450);
-    });
-  }
 
   // 4. Contact Form Submission
   const contactSubmitBtn = document.getElementById('contactSubmitBtn');
@@ -254,7 +243,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const parallaxBanner = document.getElementById('parallaxBanner');
   const parallaxCircles = document.querySelectorAll('.parallax-ambient-circle');
   const planeCard = document.getElementById('planeCard');
-  const worksPill = document.getElementById('worksPill');
 
   const comparisonCardsSection = document.getElementById('comparisonCardsSection');
   const parallaxCards = document.querySelectorAll('.parallax-card');
@@ -296,9 +284,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (planeCard) {
           planeCard.style.translate = `0px ${bannerProgress * -38}px`;
-        }
-        if (worksPill) {
-          worksPill.style.translate = `0px ${bannerProgress * 22}px`;
         }
         parallaxCircles.forEach((circle, idx) => {
           const factor = idx === 0 ? -45 : 45;
